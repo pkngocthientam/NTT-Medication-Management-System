@@ -22,7 +22,7 @@
             <button onclick="switchTab('pricing')" id="tabPricingBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">💰 Cập Nhật Giá Bán</button>
         </div>
 
-        <!-- TAB 1: NHẬP THUỐC THEO LÔ (Dạng bảng, tự động nhớ giá nhập cũ) -->
+        <!-- TAB 1: NHẬP THUỐC THEO LÔ -->
         <div id="sectionImport" class="bg-white p-6 rounded-lg shadow mb-6">
             <div class="flex justify-between items-center mb-4">
                 <div>
@@ -103,6 +103,10 @@
                             <label class="block text-xs font-medium text-gray-700 mb-1">Tên thuốc & Hàm lượng</label>
                             <input type="text" id="medNameInput" placeholder="VD: Curam 1g" class="border p-2 rounded w-full text-sm">
                         </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Thành phần gốc (Hoạt chất)</label>
+                            <input type="text" id="medIngredientInput" placeholder="VD: Amoxicillin / Clavulanate" class="border p-2 rounded w-full text-sm">
+                        </div>
                     </div>
                     <button onclick="handleSaveMedicine()" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700">
                         Lưu Tên Thuốc Vào Danh Mục
@@ -120,6 +124,7 @@
                         <tr class="bg-gray-100">
                             <th class="border p-2 text-left">Mã</th>
                             <th class="border p-2 text-left">Tên Thuốc</th>
+                            <th class="border p-2 text-left">Thành phần gốc</th>
                             <th class="border p-2 text-center">ĐVT</th>
                             <th class="border p-2 text-right">Giá Bán Hiện Tại (đ)</th>
                             <th class="border p-2 text-right w-1/4">Giá Bán Mới (đ)</th>
@@ -127,7 +132,7 @@
                         </tr>
                     </thead>
                     <tbody id="pricingTableBody">
-                        <tr><td colspan="6" class="p-4 text-center text-gray-400">Đang tải danh mục...</td></tr>
+                        <tr><td colspan="7" class="p-4 text-center text-gray-400">Đang tải danh mục...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -135,7 +140,6 @@
     </div>
 
     <script>
-        // Cấu hình kết nối Supabase trực tiếp
         const SUPABASE_URL = 'https://bwcolndcfhaxsgjuwwza.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3Y29sbmRjZmhheHNnanV3d3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNjIwMjYsImV4cCI6MjEwNzczODAyNn0.HRquyd3Q2QvQNITdgBwmk2zR3YSAfMjqfpFAXOXaPp8';
         
@@ -241,13 +245,17 @@
             const code = document.getElementById('medCodeInput').value.trim().toUpperCase();
             const name = document.getElementById('medNameInput').value.trim();
             const unit = document.getElementById('medUnitInput').value.trim();
+            const active_ingredient = document.getElementById('medIngredientInput').value.trim();
 
             if (!category_id || !code || !name || !unit) {
-                alert('Vui lòng điền đầy đủ thông tin tên thuốc!');
+                alert('Vui lòng điền đầy đủ các thông tin bắt buộc!');
                 return;
             }
 
-            const { error } = await supabaseClient.from('medicines').insert([{ category_id, code, name, unit }]);
+            const { error } = await supabaseClient.from('medicines').insert([{ 
+                category_id, code, name, unit, active_ingredient 
+            }]);
+            
             if (error) {
                 alert('Lỗi: ' + error.message);
             } else {
@@ -255,6 +263,7 @@
                 document.getElementById('medCodeInput').value = '';
                 document.getElementById('medNameInput').value = '';
                 document.getElementById('medUnitInput').value = '';
+                document.getElementById('medIngredientInput').value = '';
                 fetchAllData();
             }
         }
@@ -266,7 +275,8 @@
             let optionsHtml = '<option value="">-- Chọn tên thuốc --</option>';
             globalMedicines.forEach(m => {
                 const groupName = m.medicine_categories ? `[${m.medicine_categories.name}] ` : '';
-                optionsHtml += `<option value="${m.id}">${groupName}${m.name} (${m.unit})</option>`;
+                const ingredientInfo = m.active_ingredient ? ` (${m.active_ingredient})` : '';
+                optionsHtml += `<option value="${m.id}">${groupName}${m.name}${ingredientInfo} - ĐVT: ${m.unit}</option>`;
             });
 
             const tr = document.createElement('tr');
@@ -355,7 +365,7 @@
         function renderPricingTable() {
             const tbody = document.getElementById('pricingTableBody');
             if (globalMedicines.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">Chưa có thuốc nào trong danh mục</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Chưa có thuốc nào trong danh mục</td></tr>';
                 return;
             }
 
@@ -363,6 +373,7 @@
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-2.5 font-semibold text-gray-600">${m.code}</td>
                     <td class="p-2.5 font-medium">${m.name}</td>
+                    <td class="p-2.5 text-gray-600">${m.active_ingredient || '-'}</td>
                     <td class="p-2.5 text-center">${m.unit}</td>
                     <td class="p-2.5 text-right font-semibold text-blue-600">${m.selling_price || 0} đ</td>
                     <td class="p-2.5 text-right">
