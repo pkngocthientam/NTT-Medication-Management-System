@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phần Mềm Quản Lý Kho Phòng Khám</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Sử dụng CDN phiên bản ổn định của Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body class="bg-gray-50 font-sans">
 
@@ -118,15 +119,13 @@
             </div>
         </div>
 
-        <!-- TAB 3: KHAI BÁO DANH MỤC (Có nút chuyển đổi linh hoạt) -->
+        <!-- TAB 3: KHAI BÁO DANH MỤC -->
         <div id="sectionCatalog" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
-            <!-- Nút chọn chế độ khai báo -->
             <div class="flex gap-3 mb-6 border-b pb-4">
                 <button onclick="switchCatalogSubTab('group')" id="btnSubGroup" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold shadow">📁 Khai Báo Nhóm Thuốc</button>
                 <button onclick="switchCatalogSubTab('medicine')" id="btnSubMedicine" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-semibold hover:bg-gray-300">💊 Khai Báo Tên Thuốc</button>
             </div>
 
-            <!-- Phân khu 1: Khai báo Nhóm thuốc -->
             <div id="subSectionGroup" class="space-y-4">
                 <h3 class="text-md font-semibold text-purple-600">Thêm & Quản Lý Nhóm Thuốc</h3>
                 <div class="flex gap-2 max-w-xl mb-4">
@@ -145,7 +144,6 @@
                 </div>
             </div>
 
-            <!-- Phân khu 2: Khai báo Tên thuốc -->
             <div id="subSectionMedicine" class="space-y-4 hidden">
                 <h3 class="text-md font-semibold text-blue-600" id="medFormTitle">Khai Báo Tên Thuốc Mới</h3>
                 <input type="hidden" id="editingMedicineId" value="">
@@ -216,6 +214,10 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             try {
+                if (typeof supabase === 'undefined') {
+                    throw new Error("Thư viện Supabase chưa tải được!");
+                }
+                
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 document.getElementById('connectionStatus').textContent = 'Đã kết nối CSDL';
                 document.getElementById('connectionStatus').className = 'text-xs px-3 py-1 rounded bg-green-100 text-green-800 font-semibold';
@@ -223,7 +225,8 @@
                 document.getElementById('receiptDate').valueAsDate = new Date();
                 fetchAllData();
             } catch (err) {
-                document.getElementById('connectionStatus').textContent = 'Lỗi kết nối CSDL';
+                console.error(err);
+                document.getElementById('connectionStatus').textContent = 'Lỗi kết nối CSDL: ' + err.message;
                 document.getElementById('connectionStatus').className = 'text-xs px-3 py-1 rounded bg-red-100 text-red-800 font-semibold';
             }
         });
@@ -305,7 +308,6 @@
             }
         }
 
-        // --- NHẬP KHO & LỊCH SỬ ---
         function addImportRow(data = null) {
             const tbody = document.getElementById('importTableBody');
             const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
@@ -507,7 +509,6 @@
             document.getElementById('cancelReceiptBtn').classList.add('hidden');
         }
 
-        // --- TỒN KHO & CẬP NHẬT GIÁ BÁN ---
         function renderInventoryTable() {
             const tbody = document.getElementById('inventoryTableBody');
             const keyword = document.getElementById('searchInventoryInput').value.toLowerCase().trim();
@@ -573,7 +574,6 @@
             }
         }
 
-        // --- KHAI BÁO NHÓM & TÊN THUỐC ---
         async function handleSaveCategory() {
             const name = document.getElementById('groupNameInput').value.trim();
             if (!name) { alert('Vui lòng nhập tên nhóm thuốc!'); return; }
@@ -648,7 +648,7 @@
         }
 
         function editMedicine(id) {
-            switchCatalogSubTab('medicine'); // Tự động bật tab con Tên thuốc khi bấm sửa
+            switchCatalogSubTab('medicine');
             const med = globalMedicines.find(m => m.id === id);
             if (!med) return;
 
