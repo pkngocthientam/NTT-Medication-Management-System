@@ -18,8 +18,9 @@
         <!-- Thanh Tabs điều hướng -->
         <div class="flex border-b mb-6 overflow-x-auto bg-white rounded-t shadow-sm">
             <button onclick="switchTab('import')" id="tabImportBtn" class="py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap">📦 Nhập Kho Theo Ngày</button>
-            <button onclick="switchTab('history')" id="tabHistoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📜 Lịch Sử & Sửa Phiếu Nhập</button>
-            <button onclick="switchTab('catalog')" id="tabCatalogBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📋 Khai Báo (Nhóm & Tên Thuốc)</button>
+            <button onclick="switchTab('inventory')" id="tabInventoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📊 Tồn Kho Hiện Tại</button>
+            <button onclick="switchTab('history')" id="tabHistoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📜 Lịch Sử Phiếu Nhập</button>
+            <button onclick="switchTab('catalog')" id="tabCatalogBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📋 Khai Báo (Nhóm & Tên)</button>
             <button onclick="switchTab('pricing')" id="tabPricingBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">💰 Cập Nhật Giá Bán</button>
         </div>
 
@@ -28,11 +29,11 @@
             <div class="flex justify-between items-center mb-4 pb-3 border-b">
                 <div>
                     <h2 class="text-lg font-semibold text-green-600" id="importFormTitle">Lập Phiếu Nhập Kho Mới</h2>
-                    <p class="text-xs text-gray-500">Mỗi lần nhập sẽ tạo thành một phiếu riêng biệt theo ngày.</p>
+                    <p class="text-xs text-gray-500">Ngày nhập đồng thời là số lô, hạn dùng nhập dạng rút gọn MMYY (VD: 0926).</p>
                 </div>
                 <input type="hidden" id="editingReceiptId" value="">
                 <div class="flex items-center gap-3">
-                    <label class="text-sm font-medium text-gray-700">Ngày nhập:</label>
+                    <label class="text-sm font-medium text-gray-700">Ngày nhập (Số lô):</label>
                     <input type="date" id="receiptDate" class="border p-1.5 rounded text-sm font-semibold">
                 </div>
             </div>
@@ -50,11 +51,10 @@
                 <table class="w-full border-collapse border border-gray-200 text-sm">
                     <thead>
                         <tr class="bg-gray-100">
-                            <th class="border p-2 text-left w-2/5">Tên Thuốc (Chọn từ danh mục)</th>
-                            <th class="border p-2 text-left w-1/6">Số Lô</th>
-                            <th class="border p-2 text-left w-1/6">Hạn Sử Dụng</th>
-                            <th class="border p-2 text-center w-20">Số Lượng</th>
-                            <th class="border p-2 text-right w-1/6">Giá Nhập (đ)</th>
+                            <th class="border p-2 text-left w-3/5">Tên Thuốc (Chọn từ danh mục)</th>
+                            <th class="border p-2 text-center w-36">Hạn Dùng (MMYY)</th>
+                            <th class="border p-2 text-center w-24">Số Lượng</th>
+                            <th class="border p-2 text-right w-1/5">Giá Nhập (đ)</th>
                             <th class="border p-2 text-center w-16">Xóa</th>
                         </tr>
                     </thead>
@@ -74,14 +74,41 @@
             </div>
         </div>
 
-        <!-- TAB 2: LỊCH SỬ & QUẢN LÝ PHIẾU NHẬP -->
+        <!-- TAB 2: TỒN KHO HIỆN TẠI -->
+        <div id="sectionInventory" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-blue-600">📊 Tổng Hợp Tồn Kho Hiện Tại</h2>
+                <input type="text" id="searchInventoryInput" placeholder="Tìm kiếm tên thuốc tồn kho..." oninput="renderInventoryTable()" class="border p-2 rounded text-sm w-72">
+            </div>
+
+            <div class="overflow-x-auto border rounded">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-100 border-b">
+                            <th class="p-3 text-left">Mã</th>
+                            <th class="p-3 text-left">Tên Thuốc & Hàm lượng</th>
+                            <th class="p-3 text-left">Nhóm Thuốc</th>
+                            <th class="p-3 text-left">Thành phần gốc</th>
+                            <th class="p-3 text-center">ĐVT</th>
+                            <th class="p-3 text-right font-bold text-blue-600">Tổng Tồn Kho</th>
+                            <th class="p-3 text-left">Chi Tiết Lô & HSD (MMYY)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr><td colspan="7" class="p-4 text-center text-gray-400">Đang tải dữ liệu tồn kho...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: LỊCH SỬ PHIẾU NHẬP -->
         <div id="sectionHistory" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <h2 class="text-lg font-semibold text-blue-600 mb-4">📜 Lịch Sử Các Phiếu Nhập Kho</h2>
             <div class="overflow-x-auto border rounded">
                 <table class="w-full border-collapse text-sm">
                     <thead>
                         <tr class="bg-gray-100 border-b">
-                            <th class="p-3 text-left w-28">Ngày Nhập</th>
+                            <th class="p-3 text-left w-32">Ngày Nhập</th>
                             <th class="p-3 text-left">Ghi Chú Phiếu</th>
                             <th class="p-3 text-left">Danh Sách Thuốc & Số Lượng</th>
                             <th class="p-3 text-center w-32">Thao tác</th>
@@ -94,7 +121,7 @@
             </div>
         </div>
 
-        <!-- TAB 3: KHAI BÁO NHÓM & TÊN THUỐC -->
+        <!-- TAB 4: KHAI BÁO NHÓM & TÊN THUỐC -->
         <div id="sectionCatalog" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div class="border-r pr-0 md:pr-6">
@@ -173,7 +200,7 @@
             </div>
         </div>
 
-        <!-- TAB 4: CẬP NHẬT GIÁ BÁN -->
+        <!-- TAB 5: CẬP NHẬT GIÁ BÁN -->
         <div id="sectionPricing" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <h2 class="text-lg font-semibold text-orange-600 mb-4">Cập Nhật Giá Bán Lẻ Niêm Yết</h2>
             <div class="overflow-x-auto">
@@ -205,6 +232,7 @@
         let globalCategories = [];
         let globalMedicines = [];
         let globalReceipts = [];
+        let globalBatches = [];
 
         window.addEventListener('DOMContentLoaded', () => {
             try {
@@ -226,20 +254,22 @@
             const { data: catData } = await supabaseClient.from('medicine_categories').select('*').order('name');
             globalCategories = catData || [];
 
-            // Lấy danh sách thuốc kèm tên nhóm
             const { data: medData } = await supabaseClient.from('medicines').select('*, medicine_categories(name)').order('name');
             globalMedicines = medData || [];
 
-            // Lấy phiếu nhập và các lô hàng đi kèm (kèm theo thông tin tên thuốc trong bảng medicines)
             const { data: receiptData } = await supabaseClient
                 .from('import_receipts')
                 .select('*, inventory_batches(*, medicines(name, unit))')
                 .order('import_date', { ascending: false });
             globalReceipts = receiptData || [];
 
+            const { data: batchData } = await supabaseClient.from('inventory_batches').select('*');
+            globalBatches = batchData || [];
+
             renderCategoriesTable();
             renderCategoryDropdowns();
             renderMedicinesTable();
+            renderInventoryTable();
             renderReceiptsHistoryTable();
             renderPricingTable();
             
@@ -250,21 +280,25 @@
 
         function switchTab(tab) {
             const importSec = document.getElementById('sectionImport');
+            const inventorySec = document.getElementById('sectionInventory');
             const historySec = document.getElementById('sectionHistory');
             const catalogSec = document.getElementById('sectionCatalog');
             const pricingSec = document.getElementById('sectionPricing');
 
             const importBtn = document.getElementById('tabImportBtn');
+            const inventoryBtn = document.getElementById('tabInventoryBtn');
             const historyBtn = document.getElementById('tabHistoryBtn');
             const catalogBtn = document.getElementById('tabCatalogBtn');
             const pricingBtn = document.getElementById('tabPricingBtn');
 
             importSec.classList.add('hidden');
+            inventorySec.classList.add('hidden');
             historySec.classList.add('hidden');
             catalogSec.classList.add('hidden');
             pricingSec.classList.add('hidden');
 
             importBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
+            inventoryBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
             historyBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
             catalogBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
             pricingBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
@@ -272,6 +306,9 @@
             if (tab === 'import') {
                 importSec.classList.remove('hidden');
                 importBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
+            } else if (tab === 'inventory') {
+                inventorySec.classList.remove('hidden');
+                inventoryBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
             } else if (tab === 'history') {
                 historySec.classList.remove('hidden');
                 historyBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
@@ -284,7 +321,7 @@
             }
         }
 
-        // --- TAB 1 & 2: QUẢN LÝ PHIẾU NHẬP & LÔ HÀNG ---
+        // --- TAB 1 & 2: NHẬP KHO (Không cần số lô, HSD dạng MMYY) ---
         function addImportRow(data = null) {
             const tbody = document.getElementById('importTableBody');
             const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
@@ -305,11 +342,8 @@
                         ${optionsHtml}
                     </select>
                 </td>
-                <td class="border p-2">
-                    <input type="text" placeholder="VD: LOT01" value="${data ? data.batch_number : ''}" class="border p-1.5 rounded w-full batch-input text-sm">
-                </td>
-                <td class="border p-2">
-                    <input type="date" value="${data ? data.expiry_date : ''}" class="border p-1.5 rounded w-full expiry-input text-sm">
+                <td class="border p-2 text-center">
+                    <input type="text" placeholder="VD: 0926" maxlength="4" value="${data ? data.expiry_date : ''}" class="border p-1.5 rounded w-full expiry-input text-center text-sm font-mono">
                 </td>
                 <td class="border p-2">
                     <input type="number" placeholder="SL" value="${data ? data.quantity_imported : 1}" class="border p-1.5 rounded w-full qty-input text-center text-sm">
@@ -346,13 +380,10 @@
 
         async function handleSaveReceipt() {
             const editingId = document.getElementById('editingReceiptId').value;
-            const import_date = document.getElementById('receiptDate').value;
+            const import_date = document.getElementById('receiptDate').value; // Ngày nhập chính là số lô
             const note = document.getElementById('receiptNote').value.trim();
 
-            if (!import_date) {
-                alert('Vui lòng chọn ngày nhập kho!');
-                return;
-            }
+            if (!import_date) { alert('Vui lòng chọn ngày nhập kho!'); return; }
 
             const rows = document.querySelectorAll('#importTableBody tr');
             if (rows.length === 0) { alert('Chưa có dòng thuốc nào trong phiếu!'); return; }
@@ -360,20 +391,19 @@
             let batchList = [];
             for (let row of rows) {
                 const medicine_id = row.querySelector('.med-select').value;
-                const batch_number = row.querySelector('.batch-input').value.trim();
-                const expiry_date = row.querySelector('.expiry-input').value;
+                const expiry_date = row.querySelector('.expiry-input').value.trim();
                 const quantity_imported = parseInt(row.querySelector('.qty-input').value);
                 const import_price = parseFloat(row.querySelector('.price-input').value) || 0;
 
-                if (!medicine_id || !batch_number || !expiry_date || isNaN(quantity_imported)) {
-                    alert('Vui lòng điền đầy đủ thông tin các dòng nhập!');
+                if (!medicine_id || !expiry_date || isNaN(quantity_imported)) {
+                    alert('Vui lòng điền đầy đủ Tên thuốc, Hạn dùng (MMYY) và Số lượng!');
                     return;
                 }
 
                 batchList.push({
                     medicine_id,
-                    batch_number,
-                    expiry_date,
+                    batch_number: import_date, // Gán ngầm ngày nhập làm số lô
+                    expiry_date, // Lưu chuỗi MMYY trực tiếp
                     quantity_imported,
                     quantity_remaining: quantity_imported,
                     import_price
@@ -411,7 +441,54 @@
 
             resetImportForm();
             fetchAllData();
-            switchTab('history');
+            switchTab('inventory');
+        }
+
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventoryTableBody');
+            const keyword = document.getElementById('searchInventoryInput').value.toLowerCase().trim();
+
+            if (globalMedicines.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Chưa có thuốc nào trong hệ thống</td></tr>';
+                return;
+            }
+
+            const filteredMeds = globalMedicines.filter(m => 
+                m.name.toLowerCase().includes(keyword) || 
+                m.code.toLowerCase().includes(keyword) || 
+                (m.active_ingredient && m.active_ingredient.toLowerCase().includes(keyword))
+            );
+
+            if (filteredMeds.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Không tìm thấy thuốc phù hợp</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredMeds.map(m => {
+                const medBatches = globalBatches.filter(b => b.medicine_id === m.id);
+                const totalStock = medBatches.reduce((sum, b) => sum + (b.quantity_remaining || 0), 0);
+
+                let batchesHtml = '<span class="text-gray-400 italic">Chưa nhập lô nào</span>';
+                if (medBatches.length > 0) {
+                    batchesHtml = medBatches.map(b => `
+                        <span class="inline-block bg-green-50 text-green-800 px-2.5 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-green-200">
+                            Ngày nhập: <b>${b.batch_number}</b> | HSD: <b>${b.expiry_date}</b> | Còn: <b>${b.quantity_remaining}</b> ${m.unit}
+                        </span>
+                    `).join('');
+                }
+
+                return `
+                    <tr class="border-b hover:bg-gray-50 align-top">
+                        <td class="p-3 font-semibold text-gray-600">${m.code}</td>
+                        <td class="p-3 font-medium text-gray-800">${m.name}</td>
+                        <td class="p-3 text-gray-600">${m.medicine_categories ? m.medicine_categories.name : '-'}</td>
+                        <td class="p-3 text-gray-600">${m.active_ingredient || '-'}</td>
+                        <td class="p-3 text-center">${m.unit}</td>
+                        <td class="p-3 text-right font-bold text-blue-600 text-base">${totalStock} ${m.unit}</td>
+                        <td class="p-3">${batchesHtml}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function renderReceiptsHistoryTable() {
@@ -422,13 +499,12 @@
             }
 
             tbody.innerHTML = globalReceipts.map(r => {
-                // Hiển thị danh sách thuốc ngắn gọn: "Curam - 10 viên, Paracetamol - 50 viên"
                 let itemsSummary = '<span class="text-gray-400">Chưa có thuốc</span>';
                 if (r.inventory_batches && r.inventory_batches.length > 0) {
                     itemsSummary = r.inventory_batches.map(b => {
                         const medName = b.medicines ? b.medicines.name : 'Thuốc không xác định';
                         const unit = b.medicines ? b.medicines.unit : '';
-                        return `<span class="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-blue-200">${medName} - ${b.quantity_imported} ${unit} (Lô: ${b.batch_number})</span>`;
+                        return `<span class="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-blue-200">${medName} - ${b.quantity_imported} ${unit} (HSD: ${b.expiry_date})</span>`;
                     }).join('');
                 }
 
@@ -471,7 +547,7 @@
         }
 
         async function deleteReceipt(receiptId) {
-            if (!confirm('Bạn có chắc chắn muốn xóa phiếu nhập kho này? Các lô thuốc liên quan sẽ bị xóa khỏi kho.')) return;
+            if (!confirm('Bạn có chắc chắn muốn xóa phiếu nhập kho này?')) return;
 
             const { error } = await supabaseClient.from('import_receipts').delete().eq('id', receiptId);
             if (error) {
@@ -495,19 +571,14 @@
             document.getElementById('cancelReceiptBtn').classList.add('hidden');
         }
 
-        // --- TAB 3: KHAI BÁO NHÓM & TÊN THUỐC ---
+        // --- CÁC TAB KHAI BÁO & GIÁ BÁN GIỮ NGUYÊN ---
         async function handleSaveCategory() {
             const name = document.getElementById('groupNameInput').value.trim();
             if (!name) { alert('Vui lòng nhập tên nhóm thuốc!'); return; }
 
             const { error } = await supabaseClient.from('medicine_categories').insert([{ name }]);
-            if (error) {
-                alert('Lỗi: ' + error.message);
-            } else {
-                alert('Thêm nhóm thuốc thành công!');
-                document.getElementById('groupNameInput').value = '';
-                fetchAllData();
-            }
+            if (error) { alert('Lỗi: ' + error.message); } 
+            else { alert('Thêm nhóm thuốc thành công!'); document.getElementById('groupNameInput').value = ''; fetchAllData(); }
         }
 
         function renderCategoriesTable() {
@@ -605,7 +676,6 @@
             document.getElementById('cancelEditMedBtn').classList.add('hidden');
         }
 
-        // --- TAB 4: CẬP NHẬT GIÁ BÁN ---
         function renderPricingTable() {
             const tbody = document.getElementById('pricingTableBody');
             if (globalMedicines.length === 0) {
