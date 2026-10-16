@@ -15,69 +15,90 @@
             <span id="connectionStatus" class="text-xs px-3 py-1 rounded bg-yellow-100 text-yellow-800 font-semibold">Đang kết nối CSDL...</span>
         </div>
 
-        <!-- Thanh Tabs điều hướng -->
+        <!-- Thanh Tabs điều hướng gọn gàng -->
         <div class="flex border-b mb-6 overflow-x-auto bg-white rounded-t shadow-sm">
-            <button onclick="switchTab('import')" id="tabImportBtn" class="py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap">📦 Nhập Kho Theo Ngày</button>
-            <button onclick="switchTab('inventory')" id="tabInventoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📊 Tồn Kho Hiện Tại</button>
-            <button onclick="switchTab('history')" id="tabHistoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📜 Lịch Sử Phiếu Nhập</button>
+            <button onclick="switchTab('import')" id="tabImportBtn" class="py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap">📦 Nhập Kho & Lịch Sử Phiếu</button>
+            <button onclick="switchTab('inventory')" id="tabInventoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📊 Tồn Kho & Giá Bán</button>
             <button onclick="switchTab('catalog')" id="tabCatalogBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📋 Khai Báo (Nhóm & Tên)</button>
-            <button onclick="switchTab('pricing')" id="tabPricingBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">💰 Cập Nhật Giá Bán</button>
         </div>
 
-        <!-- TAB 1: LẬP PHIẾU NHẬP KHO THEO NGÀY -->
-        <div id="sectionImport" class="bg-white p-6 rounded-lg shadow mb-6">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b">
-                <div>
-                    <h2 class="text-lg font-semibold text-green-600" id="importFormTitle">Lập Phiếu Nhập Kho Mới</h2>
-                    <p class="text-xs text-gray-500">Ngày nhập đồng thời là số lô, hạn dùng nhập dạng rút gọn MMYY (VD: 0926).</p>
+        <!-- TAB 1: NHẬP KHO & LỊCH SỬ PHIẾU (Gộp chung 1 trang) -->
+        <div id="sectionImport" class="space-y-6">
+            <!-- Form lập phiếu -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b">
+                    <div>
+                        <h2 class="text-lg font-semibold text-green-600" id="importFormTitle">Lập Phiếu Nhập Kho Mới</h2>
+                        <p class="text-xs text-gray-500">Ngày nhập đồng thời là số lô, hạn dùng nhập dạng rút gọn MMYY (VD: 0926).</p>
+                    </div>
+                    <input type="hidden" id="editingReceiptId" value="">
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm font-medium text-gray-700">Ngày nhập (Số lô):</label>
+                        <input type="date" id="receiptDate" class="border p-1.5 rounded text-sm font-semibold">
+                    </div>
                 </div>
-                <input type="hidden" id="editingReceiptId" value="">
-                <div class="flex items-center gap-3">
-                    <label class="text-sm font-medium text-gray-700">Ngày nhập (Số lô):</label>
-                    <input type="date" id="receiptDate" class="border p-1.5 rounded text-sm font-semibold">
+
+                <div class="mb-4">
+                    <input type="text" id="receiptNote" placeholder="Ghi chú phiếu nhập (VD: Nhập hàng công ty A đợt 1)..." class="border p-2 rounded w-full text-sm">
+                </div>
+
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-gray-700">Danh sách thuốc trong phiếu:</h3>
+                    <button onclick="addImportRow()" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-blue-600">+ Thêm dòng thuốc</button>
+                </div>
+
+                <div class="overflow-x-auto mb-4">
+                    <table class="w-full border-collapse border border-gray-200 text-sm">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border p-2 text-left w-3/5">Tên Thuốc (Chọn từ danh mục)</th>
+                                <th class="border p-2 text-center w-36">Hạn Dùng (MMYY)</th>
+                                <th class="border p-2 text-center w-24">Số Lượng</th>
+                                <th class="border p-2 text-right w-1/5">Giá Nhập (đ)</th>
+                                <th class="border p-2 text-center w-16">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="importTableBody">
+                            <!-- Render động -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="handleSaveReceipt()" id="saveReceiptBtn" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 shadow">
+                        Lưu Phiếu Nhập Kho
+                    </button>
+                    <button onclick="resetImportForm()" id="cancelReceiptBtn" class="bg-gray-400 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-500 hidden">
+                        Hủy sửa
+                    </button>
                 </div>
             </div>
 
-            <div class="mb-4">
-                <input type="text" id="receiptNote" placeholder="Ghi chú phiếu nhập (VD: Nhập hàng công ty A đợt 1)..." class="border p-2 rounded w-full text-sm">
-            </div>
-
-            <div class="flex justify-between items-center mb-2">
-                <h3 class="text-sm font-semibold text-gray-700">Danh sách thuốc trong phiếu:</h3>
-                <button onclick="addImportRow()" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-blue-600">+ Thêm dòng thuốc</button>
-            </div>
-
-            <div class="overflow-x-auto mb-4">
-                <table class="w-full border-collapse border border-gray-200 text-sm">
-                    <thead>
-                        <tr class="bg-gray-100">
-                            <th class="border p-2 text-left w-3/5">Tên Thuốc (Chọn từ danh mục)</th>
-                            <th class="border p-2 text-center w-36">Hạn Dùng (MMYY)</th>
-                            <th class="border p-2 text-center w-24">Số Lượng</th>
-                            <th class="border p-2 text-right w-1/5">Giá Nhập (đ)</th>
-                            <th class="border p-2 text-center w-16">Xóa</th>
-                        </tr>
-                    </thead>
-                    <tbody id="importTableBody">
-                        <!-- Render động -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="flex gap-3">
-                <button onclick="handleSaveReceipt()" id="saveReceiptBtn" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 shadow">
-                    Lưu Phiếu Nhập Kho
-                </button>
-                <button onclick="resetImportForm()" id="cancelReceiptBtn" class="bg-gray-400 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-500 hidden">
-                    Hủy sửa
-                </button>
+            <!-- Lịch sử phiếu nhập ngay bên dưới -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold text-blue-600 mb-4">📜 Lịch Sử Các Phiếu Nhập Kho</h2>
+                <div class="overflow-x-auto border rounded">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="p-3 text-left w-32">Ngày Nhập</th>
+                                <th class="p-3 text-left">Ghi Chú Phiếu</th>
+                                <th class="p-3 text-left">Danh Sách Thuốc & Số Lượng</th>
+                                <th class="p-3 text-center w-32">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receiptsTableBody">
+                            <tr><td colspan="4" class="p-4 text-center text-gray-400">Đang tải lịch sử phiếu nhập...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- TAB 2: TỒN KHO HIỆN TẠI -->
+        <!-- TAB 2: TỒN KHO & CẬP NHẬT GIÁ BÁN TRỰC TIẾP -->
         <div id="sectionInventory" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold text-blue-600">📊 Tổng Hợp Tồn Kho Hiện Tại</h2>
+                <h2 class="text-lg font-semibold text-blue-600">📊 Tồn Kho & Quản Lý Giá Bán</h2>
                 <input type="text" id="searchInventoryInput" placeholder="Tìm kiếm tên thuốc tồn kho..." oninput="renderInventoryTable()" class="border p-2 rounded text-sm w-72">
             </div>
 
@@ -87,10 +108,10 @@
                         <tr class="bg-gray-100 border-b">
                             <th class="p-3 text-left">Mã</th>
                             <th class="p-3 text-left">Tên Thuốc & Hàm lượng</th>
-                            <th class="p-3 text-left">Nhóm Thuốc</th>
                             <th class="p-3 text-left">Thành phần gốc</th>
                             <th class="p-3 text-center">ĐVT</th>
-                            <th class="p-3 text-right font-bold text-blue-600">Tổng Tồn Kho</th>
+                            <th class="p-3 text-right">Giá Bán Lẻ (đ)</th>
+                            <th class="p-3 text-right font-bold text-blue-600">Tổng Tồn</th>
                             <th class="p-3 text-left">Chi Tiết Lô & HSD (MMYY)</th>
                         </tr>
                     </thead>
@@ -101,27 +122,7 @@
             </div>
         </div>
 
-        <!-- TAB 3: LỊCH SỬ PHIẾU NHẬP -->
-        <div id="sectionHistory" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
-            <h2 class="text-lg font-semibold text-blue-600 mb-4">📜 Lịch Sử Các Phiếu Nhập Kho</h2>
-            <div class="overflow-x-auto border rounded">
-                <table class="w-full border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-gray-100 border-b">
-                            <th class="p-3 text-left w-32">Ngày Nhập</th>
-                            <th class="p-3 text-left">Ghi Chú Phiếu</th>
-                            <th class="p-3 text-left">Danh Sách Thuốc & Số Lượng</th>
-                            <th class="p-3 text-center w-32">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody id="receiptsTableBody">
-                        <tr><td colspan="4" class="p-4 text-center text-gray-400">Đang tải lịch sử phiếu nhập...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- TAB 4: KHAI BÁO NHÓM & TÊN THUỐC -->
+        <!-- TAB 3: KHAI BÁO NHÓM & TÊN THUỐC -->
         <div id="sectionCatalog" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div class="border-r pr-0 md:pr-6">
@@ -199,29 +200,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- TAB 5: CẬP NHẬT GIÁ BÁN -->
-        <div id="sectionPricing" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
-            <h2 class="text-lg font-semibold text-orange-600 mb-4">Cập Nhật Giá Bán Lẻ Niêm Yết</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full border-collapse border border-gray-200 text-sm">
-                    <thead>
-                        <tr class="bg-gray-100">
-                            <th class="border p-2 text-left">Mã</th>
-                            <th class="border p-2 text-left">Tên Thuốc</th>
-                            <th class="border p-2 text-left">Thành phần gốc</th>
-                            <th class="border p-2 text-center">ĐVT</th>
-                            <th class="border p-2 text-right">Giá Bán Hiện Tại (đ)</th>
-                            <th class="border p-2 text-right w-1/4">Giá Bán Mới (đ)</th>
-                            <th class="border p-2 text-center w-28">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pricingTableBody">
-                        <tr><td colspan="7" class="p-4 text-center text-gray-400">Đang tải danh mục...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -271,7 +249,6 @@
             renderMedicinesTable();
             renderInventoryTable();
             renderReceiptsHistoryTable();
-            renderPricingTable();
             
             if (document.getElementById('importTableBody').children.length === 0) {
                 addImportRow();
@@ -281,27 +258,19 @@
         function switchTab(tab) {
             const importSec = document.getElementById('sectionImport');
             const inventorySec = document.getElementById('sectionInventory');
-            const historySec = document.getElementById('sectionHistory');
             const catalogSec = document.getElementById('sectionCatalog');
-            const pricingSec = document.getElementById('sectionPricing');
 
             const importBtn = document.getElementById('tabImportBtn');
             const inventoryBtn = document.getElementById('tabInventoryBtn');
-            const historyBtn = document.getElementById('tabHistoryBtn');
             const catalogBtn = document.getElementById('tabCatalogBtn');
-            const pricingBtn = document.getElementById('tabPricingBtn');
 
             importSec.classList.add('hidden');
             inventorySec.classList.add('hidden');
-            historySec.classList.add('hidden');
             catalogSec.classList.add('hidden');
-            pricingSec.classList.add('hidden');
 
             importBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
             inventoryBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
-            historyBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
             catalogBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
-            pricingBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
 
             if (tab === 'import') {
                 importSec.classList.remove('hidden');
@@ -309,19 +278,13 @@
             } else if (tab === 'inventory') {
                 inventorySec.classList.remove('hidden');
                 inventoryBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
-            } else if (tab === 'history') {
-                historySec.classList.remove('hidden');
-                historyBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
             } else if (tab === 'catalog') {
                 catalogSec.classList.remove('hidden');
                 catalogBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
-            } else if (tab === 'pricing') {
-                pricingSec.classList.remove('hidden');
-                pricingBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
             }
         }
 
-        // --- TAB 1 & 2: NHẬP KHO (Không cần số lô, HSD dạng MMYY) ---
+        // --- NHẬP KHO & LỊCH SỬ PHIẾU ---
         function addImportRow(data = null) {
             const tbody = document.getElementById('importTableBody');
             const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
@@ -380,7 +343,7 @@
 
         async function handleSaveReceipt() {
             const editingId = document.getElementById('editingReceiptId').value;
-            const import_date = document.getElementById('receiptDate').value; // Ngày nhập chính là số lô
+            const import_date = document.getElementById('receiptDate').value;
             const note = document.getElementById('receiptNote').value.trim();
 
             if (!import_date) { alert('Vui lòng chọn ngày nhập kho!'); return; }
@@ -402,8 +365,8 @@
 
                 batchList.push({
                     medicine_id,
-                    batch_number: import_date, // Gán ngầm ngày nhập làm số lô
-                    expiry_date, // Lưu chuỗi MMYY trực tiếp
+                    batch_number: import_date,
+                    expiry_date,
                     quantity_imported,
                     quantity_remaining: quantity_imported,
                     import_price
@@ -441,54 +404,6 @@
 
             resetImportForm();
             fetchAllData();
-            switchTab('inventory');
-        }
-
-        function renderInventoryTable() {
-            const tbody = document.getElementById('inventoryTableBody');
-            const keyword = document.getElementById('searchInventoryInput').value.toLowerCase().trim();
-
-            if (globalMedicines.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Chưa có thuốc nào trong hệ thống</td></tr>';
-                return;
-            }
-
-            const filteredMeds = globalMedicines.filter(m => 
-                m.name.toLowerCase().includes(keyword) || 
-                m.code.toLowerCase().includes(keyword) || 
-                (m.active_ingredient && m.active_ingredient.toLowerCase().includes(keyword))
-            );
-
-            if (filteredMeds.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Không tìm thấy thuốc phù hợp</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = filteredMeds.map(m => {
-                const medBatches = globalBatches.filter(b => b.medicine_id === m.id);
-                const totalStock = medBatches.reduce((sum, b) => sum + (b.quantity_remaining || 0), 0);
-
-                let batchesHtml = '<span class="text-gray-400 italic">Chưa nhập lô nào</span>';
-                if (medBatches.length > 0) {
-                    batchesHtml = medBatches.map(b => `
-                        <span class="inline-block bg-green-50 text-green-800 px-2.5 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-green-200">
-                            Ngày nhập: <b>${b.batch_number}</b> | HSD: <b>${b.expiry_date}</b> | Còn: <b>${b.quantity_remaining}</b> ${m.unit}
-                        </span>
-                    `).join('');
-                }
-
-                return `
-                    <tr class="border-b hover:bg-gray-50 align-top">
-                        <td class="p-3 font-semibold text-gray-600">${m.code}</td>
-                        <td class="p-3 font-medium text-gray-800">${m.name}</td>
-                        <td class="p-3 text-gray-600">${m.medicine_categories ? m.medicine_categories.name : '-'}</td>
-                        <td class="p-3 text-gray-600">${m.active_ingredient || '-'}</td>
-                        <td class="p-3 text-center">${m.unit}</td>
-                        <td class="p-3 text-right font-bold text-blue-600 text-base">${totalStock} ${m.unit}</td>
-                        <td class="p-3">${batchesHtml}</td>
-                    </tr>
-                `;
-            }).join('');
         }
 
         function renderReceiptsHistoryTable() {
@@ -543,7 +458,7 @@
                 addImportRow();
             }
 
-            switchTab('import');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         async function deleteReceipt(receiptId) {
@@ -571,7 +486,73 @@
             document.getElementById('cancelReceiptBtn').classList.add('hidden');
         }
 
-        // --- CÁC TAB KHAI BÁO & GIÁ BÁN GIỮ NGUYÊN ---
+        // --- TAB TỒN KHO & CẬP NHẬT GIÁ BÁN TRỰC TIẾP ---
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventoryTableBody');
+            const keyword = document.getElementById('searchInventoryInput').value.toLowerCase().trim();
+
+            if (globalMedicines.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Chưa có thuốc nào trong hệ thống</td></tr>';
+                return;
+            }
+
+            const filteredMeds = globalMedicines.filter(m => 
+                m.name.toLowerCase().includes(keyword) || 
+                m.code.toLowerCase().includes(keyword) || 
+                (m.active_ingredient && m.active_ingredient.toLowerCase().includes(keyword))
+            );
+
+            if (filteredMeds.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Không tìm thấy thuốc phù hợp</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredMeds.map(m => {
+                const medBatches = globalBatches.filter(b => b.medicine_id === m.id);
+                const totalStock = medBatches.reduce((sum, b) => sum + (b.quantity_remaining || 0), 0);
+
+                let batchesHtml = '<span class="text-gray-400 italic">Chưa nhập lô nào</span>';
+                if (medBatches.length > 0) {
+                    batchesHtml = medBatches.map(b => `
+                        <span class="inline-block bg-green-50 text-green-800 px-2.5 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-green-200">
+                            Ngày nhập: <b>${b.batch_number}</b> | HSD: <b>${b.expiry_date}</b> | Còn: <b>${b.quantity_remaining}</b> ${m.unit}
+                        </span>
+                    `).join('');
+                }
+
+                return `
+                    <tr class="border-b hover:bg-gray-50 align-middle">
+                        <td class="p-3 font-semibold text-gray-600">${m.code}</td>
+                        <td class="p-3 font-medium text-gray-800">${m.name}</td>
+                        <td class="p-3 text-gray-600">${m.active_ingredient || '-'}</td>
+                        <td class="p-3 text-center">${m.unit}</td>
+                        <td class="p-3 text-right">
+                            <div class="inline-flex items-center gap-1 group relative">
+                                <input type="number" id="price_inv_${m.id}" value="${m.selling_price || 0}" class="border p-1 rounded w-24 text-right text-sm">
+                                <button onclick="updateMedicinePriceQuick('${m.id}')" title="Cập nhật giá bán" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">💾</button>
+                            </div>
+                        </td>
+                        <td class="p-3 text-right font-bold text-blue-600 text-base">${totalStock} ${m.unit}</td>
+                        <td class="p-3">${batchesHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function updateMedicinePriceQuick(id) {
+            const newPrice = parseFloat(document.getElementById(`price_inv_${id}`).value);
+            if (isNaN(newPrice) || newPrice < 0) { alert('Giá bán không hợp lệ!'); return; }
+
+            const { error } = await supabaseClient.from('medicines').update({ selling_price: newPrice }).eq('id', id);
+            if (error) {
+                alert('Lỗi cập nhật giá: ' + error.message);
+            } else {
+                alert('Cập nhật giá bán thành công!');
+                fetchAllData();
+            }
+        }
+
+        // --- KHAI BÁO NHÓM & TÊN THUỐC ---
         async function handleSaveCategory() {
             const name = document.getElementById('groupNameInput').value.trim();
             if (!name) { alert('Vui lòng nhập tên nhóm thuốc!'); return; }
@@ -674,43 +655,6 @@
             document.getElementById('saveMedicineBtn').textContent = 'Lưu Tên Thuốc';
             document.getElementById('saveMedicineBtn').className = 'bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700';
             document.getElementById('cancelEditMedBtn').classList.add('hidden');
-        }
-
-        function renderPricingTable() {
-            const tbody = document.getElementById('pricingTableBody');
-            if (globalMedicines.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Chưa có thuốc nào trong danh mục</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = globalMedicines.map(m => `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="p-2.5 font-semibold text-gray-600">${m.code}</td>
-                    <td class="p-2.5 font-medium">${m.name}</td>
-                    <td class="p-2.5 text-gray-600">${m.active_ingredient || '-'}</td>
-                    <td class="p-2.5 text-center">${m.unit}</td>
-                    <td class="p-2.5 text-right font-semibold text-blue-600">${m.selling_price || 0} đ</td>
-                    <td class="p-2.5 text-right">
-                        <input type="number" id="price_${m.id}" value="${m.selling_price || 0}" class="border p-1.5 rounded w-full text-right text-sm">
-                    </td>
-                    <td class="p-2.5 text-center">
-                        <button onclick="updateMedicinePrice('${m.id}')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-blue-600">Cập nhật</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function updateMedicinePrice(id) {
-            const newPrice = parseFloat(document.getElementById(`price_${id}`).value);
-            if (isNaN(newPrice) || newPrice < 0) { alert('Giá bán không hợp lệ!'); return; }
-
-            const { error } = await supabaseClient.from('medicines').update({ selling_price: newPrice }).eq('id', id);
-            if (error) {
-                alert('Lỗi cập nhật giá: ' + error.message);
-            } else {
-                alert('Cập nhật giá bán thành công!');
-                fetchAllData();
-            }
         }
     </script>
 </body>
