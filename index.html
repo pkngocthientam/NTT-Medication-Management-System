@@ -15,16 +15,15 @@
             <span id="connectionStatus" class="text-xs px-3 py-1 rounded bg-yellow-100 text-yellow-800 font-semibold">Đang kết nối CSDL...</span>
         </div>
 
-        <!-- Thanh Tabs điều hướng gọn gàng -->
+        <!-- Thanh Tabs điều hướng chính -->
         <div class="flex border-b mb-6 overflow-x-auto bg-white rounded-t shadow-sm">
             <button onclick="switchTab('import')" id="tabImportBtn" class="py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap">📦 Nhập Kho & Lịch Sử Phiếu</button>
             <button onclick="switchTab('inventory')" id="tabInventoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📊 Tồn Kho & Giá Bán</button>
-            <button onclick="switchTab('catalog')" id="tabCatalogBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📋 Khai Báo (Nhóm & Tên)</button>
+            <button onclick="switchTab('catalog')" id="tabCatalogBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📋 Khai Báo Danh Mục</button>
         </div>
 
-        <!-- TAB 1: NHẬP KHO & LỊCH SỬ PHIẾU (Gộp chung 1 trang) -->
+        <!-- TAB 1: NHẬP KHO & LỊCH SỬ PHIẾU -->
         <div id="sectionImport" class="space-y-6">
-            <!-- Form lập phiếu -->
             <div class="bg-white p-6 rounded-lg shadow">
                 <div class="flex justify-between items-center mb-4 pb-3 border-b">
                     <div>
@@ -58,9 +57,7 @@
                                 <th class="border p-2 text-center w-16">Xóa</th>
                             </tr>
                         </thead>
-                        <tbody id="importTableBody">
-                            <!-- Render động -->
-                        </tbody>
+                        <tbody id="importTableBody"></tbody>
                     </table>
                 </div>
 
@@ -74,7 +71,6 @@
                 </div>
             </div>
 
-            <!-- Lịch sử phiếu nhập ngay bên dưới -->
             <div class="bg-white p-6 rounded-lg shadow">
                 <h2 class="text-lg font-semibold text-blue-600 mb-4">📜 Lịch Sử Các Phiếu Nhập Kho</h2>
                 <div class="overflow-x-auto border rounded">
@@ -88,14 +84,14 @@
                             </tr>
                         </thead>
                         <tbody id="receiptsTableBody">
-                            <tr><td colspan="4" class="p-4 text-center text-gray-400">Đang tải lịch sử phiếu nhập...</td></tr>
+                            <tr><td colspan="4" class="p-4 text-center text-gray-400">Đang tải lịch sử...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 2: TỒN KHO & CẬP NHẬT GIÁ BÁN TRỰC TIẾP -->
+        <!-- TAB 2: TỒN KHO & CẬP NHẬT GIÁ BÁN -->
         <div id="sectionInventory" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-semibold text-blue-600">📊 Tồn Kho & Quản Lý Giá Bán</h2>
@@ -116,87 +112,93 @@
                         </tr>
                     </thead>
                     <tbody id="inventoryTableBody">
-                        <tr><td colspan="7" class="p-4 text-center text-gray-400">Đang tải dữ liệu tồn kho...</td></tr>
+                        <tr><td colspan="7" class="p-4 text-center text-gray-400">Đang tải tồn kho...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- TAB 3: KHAI BÁO NHÓM & TÊN THUỐC -->
+        <!-- TAB 3: KHAI BÁO DANH MỤC (Có nút chuyển đổi linh hoạt) -->
         <div id="sectionCatalog" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <div class="border-r pr-0 md:pr-6">
-                    <h3 class="text-md font-semibold text-purple-600 mb-3">1️⃣ Khai Báo Nhóm Thuốc</h3>
-                    <div class="flex gap-2 mb-4">
-                        <input type="text" id="groupNameInput" placeholder="VD: Kháng sinh, Giảm đau..." class="border p-2 rounded w-full text-sm">
-                        <button onclick="handleSaveCategory()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-700 whitespace-nowrap">Thêm Nhóm</button>
-                    </div>
-                    <div class="border rounded max-h-60 overflow-y-auto">
-                        <table class="w-full text-sm">
-                            <thead class="bg-gray-50 border-b">
-                                <tr><th class="p-2 text-left">Tên Nhóm Thuốc</th></tr>
-                            </thead>
-                            <tbody id="categoriesTableBody">
-                                <tr><td class="p-3 text-center text-gray-400">Đang tải danh sách nhóm...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <!-- Nút chọn chế độ khai báo -->
+            <div class="flex gap-3 mb-6 border-b pb-4">
+                <button onclick="switchCatalogSubTab('group')" id="btnSubGroup" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold shadow">📁 Khai Báo Nhóm Thuốc</button>
+                <button onclick="switchCatalogSubTab('medicine')" id="btnSubMedicine" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-semibold hover:bg-gray-300">💊 Khai Báo Tên Thuốc</button>
+            </div>
 
-                <div>
-                    <h3 class="text-md font-semibold text-blue-600 mb-3" id="medFormTitle">2️⃣ Khai Báo Tên Thuốc Mới</h3>
-                    <input type="hidden" id="editingMedicineId" value="">
-                    <div class="grid grid-cols-1 gap-3 mb-4">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Thuộc nhóm thuốc</label>
-                            <select id="medCategorySelect" class="border p-2 rounded w-full text-sm">
-                                <option value="">-- Chọn nhóm thuốc --</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Mã thuốc</label>
-                                <input type="text" id="medCodeInput" placeholder="VD: CUR1G" class="border p-2 rounded w-full text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Đơn vị tính</label>
-                                <input type="text" id="medUnitInput" placeholder="VD: Hộp, Viên, Lọ" class="border p-2 rounded w-full text-sm">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Tên thuốc & Hàm lượng</label>
-                            <input type="text" id="medNameInput" placeholder="VD: Curam 1g" class="border p-2 rounded w-full text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Thành phần gốc (Hoạt chất)</label>
-                            <input type="text" id="medIngredientInput" placeholder="VD: Amoxicillin / Clavulanate" class="border p-2 rounded w-full text-sm">
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="handleSaveMedicine()" id="saveMedicineBtn" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700">Lưu Tên Thuốc</button>
-                        <button onclick="resetMedicineForm()" id="cancelEditMedBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-500 hidden">Hủy sửa</button>
-                    </div>
+            <!-- Phân khu 1: Khai báo Nhóm thuốc -->
+            <div id="subSectionGroup" class="space-y-4">
+                <h3 class="text-md font-semibold text-purple-600">Thêm & Quản Lý Nhóm Thuốc</h3>
+                <div class="flex gap-2 max-w-xl mb-4">
+                    <input type="text" id="groupNameInput" placeholder="VD: Kháng sinh, Giảm đau, Long đờm..." class="border p-2 rounded w-full text-sm">
+                    <button onclick="handleSaveCategory()" class="bg-purple-600 text-white px-5 py-2 rounded text-sm font-semibold hover:bg-purple-700 whitespace-nowrap">Thêm Nhóm</button>
+                </div>
+                <div class="border rounded max-w-xl overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 border-b">
+                            <tr><th class="p-3 text-left">Tên Nhóm Thuốc</th></tr>
+                        </thead>
+                        <tbody id="categoriesTableBody">
+                            <tr><td class="p-3 text-center text-gray-400">Đang tải danh sách nhóm...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="border-t pt-6">
-                <h3 class="text-md font-semibold text-gray-700 mb-3">📋 Danh Sách Tên Thuốc Đã Khai Báo</h3>
-                <div class="overflow-x-auto border rounded">
-                    <table class="w-full border-collapse text-sm">
-                        <thead>
-                            <tr class="bg-gray-100 border-b">
-                                <th class="p-2.5 text-left">Mã</th>
-                                <th class="p-2.5 text-left">Tên thuốc</th>
-                                <th class="p-2.5 text-left">Nhóm</th>
-                                <th class="p-2.5 text-left">Thành phần gốc</th>
-                                <th class="p-2.5 text-center">ĐVT</th>
-                                <th class="p-2.5 text-center w-24">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody id="medicinesTableBody">
-                            <tr><td colspan="6" class="p-4 text-center text-gray-400">Đang tải danh mục...</td></tr>
-                        </tbody>
-                    </table>
+            <!-- Phân khu 2: Khai báo Tên thuốc -->
+            <div id="subSectionMedicine" class="space-y-4 hidden">
+                <h3 class="text-md font-semibold text-blue-600" id="medFormTitle">Khai Báo Tên Thuốc Mới</h3>
+                <input type="hidden" id="editingMedicineId" value="">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mb-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Thuộc nhóm thuốc</label>
+                        <select id="medCategorySelect" class="border p-2 rounded w-full text-sm">
+                            <option value="">-- Chọn nhóm thuốc --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Mã thuốc</label>
+                        <input type="text" id="medCodeInput" placeholder="VD: CUR1G" class="border p-2 rounded w-full text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Tên thuốc & Hàm lượng</label>
+                        <input type="text" id="medNameInput" placeholder="VD: Curam 1g" class="border p-2 rounded w-full text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Thành phần gốc (Hoạt chất)</label>
+                        <input type="text" id="medIngredientInput" placeholder="VD: Amoxicillin / Clavulanate" class="border p-2 rounded w-full text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Đơn vị tính</label>
+                        <input type="text" id="medUnitInput" placeholder="VD: Hộp, Viên, Lọ" class="border p-2 rounded w-full text-sm">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mb-6">
+                    <button onclick="handleSaveMedicine()" id="saveMedicineBtn" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700">Lưu Tên Thuốc</button>
+                    <button onclick="resetMedicineForm()" id="cancelEditMedBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-500 hidden">Hủy sửa</button>
+                </div>
+
+                <div class="border-t pt-4">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">📋 Danh Sách Tên Thuốc Đã Khai Báo</h4>
+                    <div class="overflow-x-auto border rounded">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-gray-100 border-b">
+                                    <th class="p-2.5 text-left">Mã</th>
+                                    <th class="p-2.5 text-left">Tên thuốc</th>
+                                    <th class="p-2.5 text-left">Nhóm</th>
+                                    <th class="p-2.5 text-left">Thành phần gốc</th>
+                                    <th class="p-2.5 text-center">ĐVT</th>
+                                    <th class="p-2.5 text-center w-24">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="medicinesTableBody">
+                                <tr><td colspan="6" class="p-4 text-center text-gray-400">Đang tải danh sách...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -284,7 +286,26 @@
             }
         }
 
-        // --- NHẬP KHO & LỊCH SỬ PHIẾU ---
+        function switchCatalogSubTab(sub) {
+            const groupSec = document.getElementById('subSectionGroup');
+            const medicineSec = document.getElementById('subSectionMedicine');
+            const btnGroup = document.getElementById('btnSubGroup');
+            const btnMedicine = document.getElementById('btnSubMedicine');
+
+            if (sub === 'group') {
+                groupSec.classList.remove('hidden');
+                medicineSec.classList.add('hidden');
+                btnGroup.className = 'bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold shadow';
+                btnMedicine.className = 'bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-semibold hover:bg-gray-300';
+            } else {
+                groupSec.classList.add('hidden');
+                medicineSec.classList.remove('hidden');
+                btnMedicine.className = 'bg-blue-600 text-white px-4 py-2 rounded text-sm font-semibold shadow';
+                btnGroup.className = 'bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-semibold hover:bg-gray-300';
+            }
+        }
+
+        // --- NHẬP KHO & LỊCH SỬ ---
         function addImportRow(data = null) {
             const tbody = document.getElementById('importTableBody');
             const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
@@ -486,7 +507,7 @@
             document.getElementById('cancelReceiptBtn').classList.add('hidden');
         }
 
-        // --- TAB TỒN KHO & CẬP NHẬT GIÁ BÁN TRỰC TIẾP ---
+        // --- TỒN KHO & CẬP NHẬT GIÁ BÁN ---
         function renderInventoryTable() {
             const tbody = document.getElementById('inventoryTableBody');
             const keyword = document.getElementById('searchInventoryInput').value.toLowerCase().trim();
@@ -527,7 +548,7 @@
                         <td class="p-3 text-gray-600">${m.active_ingredient || '-'}</td>
                         <td class="p-3 text-center">${m.unit}</td>
                         <td class="p-3 text-right">
-                            <div class="inline-flex items-center gap-1 group relative">
+                            <div class="inline-flex items-center gap-1">
                                 <input type="number" id="price_inv_${m.id}" value="${m.selling_price || 0}" class="border p-1 rounded w-24 text-right text-sm">
                                 <button onclick="updateMedicinePriceQuick('${m.id}')" title="Cập nhật giá bán" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">💾</button>
                             </div>
@@ -627,6 +648,7 @@
         }
 
         function editMedicine(id) {
+            switchCatalogSubTab('medicine'); // Tự động bật tab con Tên thuốc khi bấm sửa
             const med = globalMedicines.find(m => m.id === id);
             if (!med) return;
 
@@ -651,7 +673,7 @@
             document.getElementById('medUnitInput').value = '';
             document.getElementById('medIngredientInput').value = '';
 
-            document.getElementById('medFormTitle').textContent = '2️⃣ Khai Báo Tên Thuốc Mới';
+            document.getElementById('medFormTitle').textContent = 'Khai Báo Tên Thuốc Mới';
             document.getElementById('saveMedicineBtn').textContent = 'Lưu Tên Thuốc';
             document.getElementById('saveMedicineBtn').className = 'bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700';
             document.getElementById('cancelEditMedBtn').classList.add('hidden');
