@@ -13,7 +13,7 @@
     <div id="loginScreen" class="fixed inset-0 bg-blue-900 bg-opacity-90 flex items-center justify-center z-50 p-4">
         <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
             <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-blue-600">🏥 Phòng Khám Đa Khoa</h2>
+                <h2 class="text-2xl font-bold text-blue-600">🏥 Phòng Khám Ngọc Thiên Tâm</h2>
                 <p class="text-sm text-gray-500 mt-1">Vui lòng đăng nhập để tiếp tục</p>
             </div>
             <div class="space-y-4">
@@ -48,8 +48,8 @@
         <!-- 2 TAB LỚN ĐIỀU HƯỚNG -->
         <div class="grid grid-cols-2 gap-4 mb-6">
             <button onclick="switchMainTab('sales')" id="mainTabSales" class="py-5 px-6 rounded-xl font-bold text-lg text-center shadow transition bg-blue-600 text-white border-2 border-blue-600">
-                💰 BÁN THUỐC & KÊ ĐƠN
-                <p class="text-xs font-normal mt-1 opacity-90">Lập đơn bán thuốc, kê liều dùng & trừ tồn kho</p>
+                💰 BÁN THUỐC NHANH
+                <p class="text-xs font-normal mt-1 opacity-90">Kê đơn siêu tốc, tìm kiếm nhanh & trừ kho tự động</p>
             </button>
             <button onclick="switchMainTab('management')" id="mainTabManagement" class="py-5 px-6 rounded-xl font-bold text-lg text-center shadow transition bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-400">
                 📦 NHẬP KHO & QUẢN LÝ
@@ -57,37 +57,31 @@
             </button>
         </div>
 
-        <!-- ================= TAB LỚN 1: BÁN THUỐC & KÊ ĐƠN ================= -->
+        <!-- ================= TAB LỚN 1: BÁN THUỐC NHANH ================= -->
         <div id="sectionSales" class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Cột trái: Form kê đơn bán thuốc -->
+                <!-- Cột trái: Lập phiếu bán siêu tốc -->
                 <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow border space-y-4">
                     <div class="flex justify-between items-center border-b pb-3">
-                        <h2 class="text-lg font-bold text-blue-600">📝 Lập Đơn Bán Thuốc / Kê Đơn</h2>
-                        <button onclick="addSaleRow()" class="bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-600">+ Thêm thuốc</button>
+                        <div>
+                            <h2 class="text-lg font-bold text-blue-600">⚡ Lập Phiếu Bán Thuốc Nhanh</h2>
+                            <p class="text-xs text-gray-500">Gõ tên thuốc để chọn nhanh, nhấn Tab sang số lượng, nhấn Enter thêm dòng mới.</p>
+                        </div>
+                        <span id="autoOrderCode" class="text-xs font-mono bg-gray-100 px-2.5 py-1 rounded border font-bold text-gray-600">Mã: --</span>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Tên bệnh nhân / Khách hàng</label>
-                            <input type="text" id="patientNameInput" placeholder="Khách lẻ..." class="border p-2 rounded w-full text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Chẩn đoán / Ghi chú</label>
-                            <input type="text" id="diagnosisInput" placeholder="VD: Viêm họng cấp..." class="border p-2 rounded w-full text-sm">
-                        </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Tên bệnh nhân (Không bắt buộc)</label>
+                        <input type="text" id="patientNameInput" placeholder="Nhập tên bệnh nhân hoặc để trống (Khách lẻ)..." class="border p-2 rounded w-full text-sm">
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto min-h-[200px]">
                         <table class="w-full border-collapse border border-gray-200 text-sm">
                             <thead>
                                 <tr class="bg-gray-100">
-                                    <th class="border p-2 text-left w-2/5">Tên Thuốc (Còn tồn)</th>
-                                    <th class="border p-2 text-center w-20">SL</th>
-                                    <th class="border p-2 text-right w-28">Đơn giá</th>
-                                    <th class="border p-2 text-left">Cách dùng / Hướng dẫn</th>
-                                    <th class="border p-2 text-right w-28">Thành tiền</th>
-                                    <th class="border p-2 text-center w-12">Xóa</th>
+                                    <th class="border p-2 text-left w-3/5">Tên Thuốc & Tồn Kho (Gõ để tìm nhanh)</th>
+                                    <th class="border p-2 text-center w-32">Số Lượng</th>
+                                    <th class="border p-2 text-center w-16">Xóa</th>
                                 </tr>
                             </thead>
                             <tbody id="salesTableBody">
@@ -96,27 +90,32 @@
                         </table>
                     </div>
 
+                    <!-- Cảnh báo lỗi tồn kho -->
+                    <div id="stockWarningContainer" class="hidden bg-red-50 border border-red-300 text-red-600 p-2.5 rounded text-xs font-semibold text-center">
+                        ⚠️ Có thuốc vượt quá số lượng tồn kho! Vui lòng kiểm tra lại.
+                    </div>
+
                     <div class="flex justify-between items-center bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <span class="text-sm font-bold text-gray-700">Tổng tiền đơn hàng:</span>
                         <span id="grandTotalText" class="text-2xl font-black text-blue-700">0 đ</span>
                     </div>
 
-                    <button onclick="handleCompleteSale()" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-base hover:bg-green-700 shadow-md">
-                        ✅ Xác Nhận Bán & Trừ Kho Autocrat
+                    <button onclick="handleCompleteSale()" id="completeSaleBtn" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-base hover:bg-green-700 shadow-md transition">
+                        ✅ Hoàn Thành Bán & Trừ Kho (Enter)
                     </button>
                 </div>
 
-                <!-- Cột phải: Lịch sử các đơn vừa bán -->
+                <!-- Cột phải: Lịch sử bán thuốc theo ngày -->
                 <div class="bg-white p-6 rounded-lg shadow border space-y-4">
-                    <h2 class="text-md font-bold text-gray-700 border-b pb-2">📜 Đơn Thuốc Gần Đây</h2>
-                    <div class="overflow-y-auto max-h-[500px] space-y-3" id="salesHistoryList">
-                        <p class="text-xs text-gray-400 text-center py-4">Chưa có đơn hàng nào</p>
+                    <h2 class="text-md font-bold text-gray-700 border-b pb-2">📜 Lịch Sử Phiếu Bán Theo Ngày</h2>
+                    <div class="overflow-y-auto max-h-[550px] space-y-3" id="salesHistoryList">
+                        <p class="text-xs text-gray-400 text-center py-4">Chưa có phiếu bán nào</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ================= TAB LỚN 2: NHẬP KHO & QUẢN LÝ ================= -->
+        <!-- ================= TAB LỚN 2: NHẬP KHO & QUẢN LÝ (Giữ nguyên) ================= -->
         <div id="sectionManagement" class="space-y-6 hidden">
             <div class="flex bg-white rounded-lg shadow-sm border p-1 gap-2">
                 <button onclick="switchSubTab('import')" id="subTabImport" class="flex-1 py-2.5 rounded-md font-semibold text-sm bg-blue-50 text-blue-700 shadow-sm transition">📦 Nhập Kho & Lịch Sử</button>
@@ -372,7 +371,13 @@
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
             document.getElementById('currentStaffName').textContent = currentStaff.fullname;
+            generateNewOrderCode();
             fetchAllData();
+        }
+
+        function generateNewOrderCode() {
+            const code = 'PB-' + Math.floor(100000 + Math.random() * 900000);
+            document.getElementById('autoOrderCode').textContent = 'Mã phiếu: ' + code;
         }
 
         // --- SWITCH TABS ---
@@ -445,7 +450,6 @@
             }
         }
 
-        // --- FETCH ALL DATA ---
         async function fetchAllData() {
             if (!supabaseClient) return;
             
@@ -468,7 +472,7 @@
                 .from('sales_orders')
                 .select('*, sales_order_items(*, medicines(name, unit))')
                 .order('created_at', { ascending: false })
-                .limit(20);
+                .limit(30);
             globalSalesOrders = salesData || [];
 
             renderCategoriesTable();
@@ -486,71 +490,129 @@
             }
         }
 
-        // ================= XỬ LÝ MODULE BÁN THUỐC =================
+        // ================= XỬ LÝ BÁN THUỐC SIÊU TỐC =================
         function addSaleRow() {
             const tbody = document.getElementById('salesTableBody');
             const rowId = 'sale_row_' + Date.now() + Math.random().toString(36).substring(2, 5);
 
-            let optionsHtml = '<option value="">-- Chọn thuốc bán --</option>';
-            globalMedicines.forEach(m => {
-                const medBatches = globalBatches.filter(b => b.medicine_id === m.id);
-                const stock = medBatches.reduce((s, b) => s + (b.quantity_remaining || 0), 0);
-                if (stock > 0) {
-                    optionsHtml += `<option value="${m.id}">${m.name} (Tồn: ${stock} ${m.unit}) - ${m.selling_price || 0}đ</option>`;
-                }
-            });
-
             const tr = document.createElement('tr');
             tr.id = rowId;
+            tr.className = 'border-b';
             tr.innerHTML = `
-                <td class="border p-2">
-                    <select class="border p-1.5 rounded w-full sale-med-select text-sm" onchange="onSelectSaleMedicine(this, '${rowId}')">
-                        ${optionsHtml}
-                    </select>
-                </td>
-                <td class="border p-2">
-                    <input type="number" value="1" min="1" oninput="calculateSaleRow('${rowId}')" class="border p-1.5 rounded w-full sale-qty-input text-center text-sm font-semibold">
-                </td>
-                <td class="border p-2 text-right">
-                    <input type="number" readonly class="border p-1.5 rounded w-full sale-price-input text-right text-sm bg-gray-50 font-semibold" value="0">
-                </td>
-                <td class="border p-2">
-                    <input type="text" placeholder="Sáng 1, tối 1..." class="border p-1.5 rounded w-full sale-dosage-input text-sm">
-                </td>
-                <td class="border p-2 text-right font-bold text-blue-600 sale-row-total text-sm">
-                    0 đ
+                <td class="border p-2 relative">
+                    <input type="text" placeholder="Gõ tên thuốc (VD: Cur)..." class="border p-1.5 rounded w-full sale-med-input text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" oninput="filterSaleMedicines(this, '${rowId}')" autocomplete="off">
+                    <input type="hidden" class="sale-med-id" value="">
+                    <!-- Dropdown gợi ý -->
+                    <div class="sale-suggestions absolute left-0 right-0 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-20 hidden mt-1"></div>
                 </td>
                 <td class="border p-2 text-center">
-                    <button onclick="document.getElementById('${rowId}').remove(); calculateGrandTotal();" class="text-red-500 font-bold hover:text-red-700">✕</button>
+                    <input type="number" value="1" min="1" oninput="validateStockAndTotal('${rowId}')" onkeydown="handleSaleKeydown(event, '${rowId}')" class="border p-1.5 rounded w-20 sale-qty-input text-center text-sm font-semibold">
+                    <div class="text-[10px] text-gray-400 mt-0.5 stock-info-text">Tồn: 0</div>
+                </td>
+                <td class="border p-2 text-center">
+                    <button onclick="document.getElementById('${rowId}').remove(); checkStockWarnings(); calculateGrandTotal();" class="text-red-500 font-bold hover:text-red-700">✕</button>
                 </td>
             `;
             tbody.appendChild(tr);
+            tr.querySelector('.sale-med-input').focus();
         }
 
-        function onSelectSaleMedicine(selectEl, rowId) {
-            const medId = selectEl.value;
+        function filterSaleMedicines(inputEl, rowId) {
+            const keyword = inputEl.value.toLowerCase().trim();
             const row = document.getElementById(rowId);
-            const priceInput = row.querySelector('.sale-price-input');
+            const dropdown = row.querySelector('.sale-suggestions');
 
-            if (!medId) {
-                priceInput.value = 0;
-            } else {
-                const med = globalMedicines.find(m => m.id === medId);
-                priceInput.value = med ? (med.selling_price || 0) : 0;
+            if (!keyword) {
+                dropdown.classList.add('hidden');
+                return;
             }
-            calculateSaleRow(rowId);
+
+            const matched = globalMedicines.filter(m => {
+                const stock = globalBatches.filter(b => b.medicine_id === m.id).reduce((s, b) => s + (b.quantity_remaining || 0), 0);
+                return (m.name.toLowerCase().includes(keyword) || (m.active_ingredient && m.active_ingredient.toLowerCase().includes(keyword))) && stock > 0;
+            });
+
+            if (matched.length === 0) {
+                dropdown.innerHTML = '<div class="p-2 text-gray-400 text-xs">Không tìm thấy thuốc còn tồn</div>';
+                dropdown.classList.remove('hidden');
+                return;
+            }
+
+            dropdown.innerHTML = matched.map(m => {
+                const stock = globalBatches.filter(b => b.medicine_id === m.id).reduce((s, b) => s + (b.quantity_remaining || 0), 0);
+                return `<div onclick="selectSaleMedicine('${m.id}', '${m.name.replace(/'/g, "\\'")}', ${stock}, ${m.selling_price || 0}, '${rowId}')" class="p-2 hover:bg-blue-50 cursor-pointer text-xs border-b flex justify-between items-center">
+                    <span class="font-medium text-gray-800">${m.name} (${m.unit})</span>
+                    <span class="text-blue-600 font-bold">Tồn: ${stock} | ${(m.selling_price || 0).toLocaleString()}đ</span>
+                </div>`;
+            }).join('');
+            dropdown.classList.remove('hidden');
         }
 
-        function calculateSaleRow(rowId) {
+        function selectSaleMedicine(id, name, stock, price, rowId) {
             const row = document.getElementById(rowId);
-            if (!row) return;
+            row.querySelector('.sale-med-input').value = name;
+            row.querySelector('.sale-med-id').value = id;
+            row.dataset.price = price;
+            row.dataset.stock = stock;
+            row.querySelector('.stock-info-text').textContent = `Tồn: ${stock}`;
+            row.querySelector('.sale-suggestions').classList.add('hidden');
 
-            const qty = parseInt(row.querySelector('.sale-qty-input').value) || 0;
-            const price = parseFloat(row.querySelector('.sale-price-input').value) || 0;
-            const rowTotal = qty * price;
+            validateStockAndTotal(rowId);
+            row.querySelector('.sale-qty-input').focus();
+            row.querySelector('.sale-qty-input').select();
+        }
 
-            row.querySelector('.sale-row-total').textContent = rowTotal.toLocaleString('vi-VN') + ' đ';
+        function validateStockAndTotal(rowId) {
+            const row = document.getElementById(rowId);
+            const stock = parseInt(row.dataset.stock) || 0;
+            const qtyInput = row.querySelector('.sale-qty-input');
+            const qty = parseInt(qtyInput.value) || 0;
+
+            if (qty > stock) {
+                qtyInput.classList.add('border-red-500', 'bg-red-50', 'text-red-600');
+                row.dataset.isOverStock = "true";
+            } else {
+                qtyInput.classList.remove('border-red-500', 'bg-red-50', 'text-red-600');
+                row.dataset.isOverStock = "false";
+            }
+
+            checkStockWarnings();
             calculateGrandTotal();
+        }
+
+        function checkStockWarnings() {
+            const rows = document.querySelectorAll('#salesTableBody tr');
+            let hasOver = false;
+            rows.forEach(r => {
+                if (r.dataset.isOverStock === "true") hasOver = true;
+            });
+
+            const warningEl = document.getElementById('stockWarningContainer');
+            const btnEl = document.getElementById('completeSaleBtn');
+            if (hasOver) {
+                warningEl.classList.remove('hidden');
+                btnEl.disabled = true;
+                btnEl.className = 'w-full bg-gray-400 text-white py-3 rounded-lg font-bold text-base cursor-not-allowed shadow-none';
+            } else {
+                warningEl.classList.add('hidden');
+                btnEl.disabled = false;
+                btnEl.className = 'w-full bg-green-600 text-white py-3 rounded-lg font-bold text-base hover:bg-green-700 shadow-md transition';
+            }
+        }
+
+        function handleSaleKeydown(event, rowId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                // Nếu là dòng cuối, tự động thêm dòng mới
+                const rows = document.querySelectorAll('#salesTableBody tr');
+                if (rows[rows.length - 1].id === rowId) {
+                    addSaleRow();
+                } else {
+                    // Chuyển focus sang dòng tiếp theo
+                    const nextRow = rows[Array.from(rows).findIndex(r => r.id === rowId) + 1];
+                    if (nextRow) nextRow.querySelector('.sale-med-input').focus();
+                }
+            }
         }
 
         function calculateGrandTotal() {
@@ -558,7 +620,7 @@
             let grandTotal = 0;
             rows.forEach(row => {
                 const qty = parseInt(row.querySelector('.sale-qty-input').value) || 0;
-                const price = parseFloat(row.querySelector('.sale-price-input').value) || 0;
+                const price = parseFloat(row.dataset.price) || 0;
                 grandTotal += qty * price;
             });
             document.getElementById('grandTotalText').textContent = grandTotal.toLocaleString('vi-VN') + ' đ';
@@ -566,45 +628,34 @@
 
         async function handleCompleteSale() {
             const patient_name = document.getElementById('patientNameInput').value.trim() || 'Khách lẻ';
-            const diagnosis = document.getElementById('diagnosisInput').value.trim();
             const rows = document.querySelectorAll('#salesTableBody tr');
 
-            if (rows.length === 0) { alert('Chưa có thuốc nào trong đơn hàng!'); return; }
+            if (rows.length === 0) { alert('Chưa có thuốc trong đơn hàng!'); return; }
 
             let itemsToSell = [];
             for (let row of rows) {
-                const medicine_id = row.querySelector('.sale-med-select').value;
+                const medicine_id = row.querySelector('.sale-med-id').value;
                 const quantity = parseInt(row.querySelector('.sale-qty-input').value);
-                const price = parseFloat(row.querySelector('.sale-price-input').value) || 0;
-                const dosage_instruction = row.querySelector('.sale-dosage-input').value.trim();
+                const price = parseFloat(row.dataset.price) || 0;
 
                 if (!medicine_id || isNaN(quantity) || quantity <= 0) {
-                    alert('Vui lòng chọn thuốc và nhập số lượng bán hợp lệ!');
+                    alert('Vui lòng chọn thuốc hợp lệ và nhập số lượng!');
                     return;
                 }
 
-                // Kiểm tra đủ tồn kho không
                 const medBatches = globalBatches.filter(b => b.medicine_id === medicine_id);
-                const totalStock = medBatches.reduce((s, b) => s + (b.quantity_remaining || 0), 0);
-                const med = globalMedicines.find(m => m.id === medicine_id);
-
-                if (quantity > totalStock) {
-                    alert(`Thuốc "${med ? med.name : ''}" không đủ tồn kho (Còn ${totalStock}, cần ${quantity})!`);
-                    return;
-                }
-
-                itemsToSell.push({ medicine_id, quantity, price, dosage_instruction, medBatches });
+                itemsToSell.push({ medicine_id, quantity, price, medBatches });
             }
 
-            // Tính tổng tiền đơn
             const total_amount = itemsToSell.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+            const orderCode = document.getElementById('autoOrderCode').textContent.replace('Mã phiếu: ', '');
 
-            // 1. Tạo Đơn Bán
+            // 1. Lưu Đơn Bán
             const { data: orderData, error: orderErr } = await supabaseClient
                 .from('sales_orders')
                 .insert([{
+                    order_code: orderCode,
                     patient_name,
-                    diagnosis,
                     total_amount,
                     staff_name: currentStaff ? currentStaff.fullname : 'Nhân viên'
                 }])
@@ -615,20 +666,16 @@
 
             const orderId = orderData.id;
 
-            // 2. Lưu chi tiết đơn bán & Trừ kho FIFO
+            // 2. Lưu chi tiết & Trừ kho FIFO
             for (let item of itemsToSell) {
-                // Lưu item
                 await supabaseClient.from('sales_order_items').insert([{
                     order_id: orderId,
                     medicine_id: item.medicine_id,
                     quantity: item.quantity,
-                    price: item.price,
-                    dosage_instruction: item.dosage_instruction
+                    price: item.price
                 }]);
 
-                // Trừ kho FIFO các lô
                 let remainingToDeduct = item.quantity;
-                // Sắp xếp lô theo ngày nhập tăng dần (cũ nhất trừ trước)
                 const sortedBatches = item.medBatches.sort((a, b) => new Date(a.imported_at) - new Date(b.imported_at));
 
                 for (let batch of sortedBatches) {
@@ -646,44 +693,42 @@
                 }
             }
 
-            alert('Xác nhận đơn bán & Trừ tồn kho thành công!');
+            alert('Bán thuốc thành công & Đã trừ tồn kho!');
             
-            // Reset Form Bán
             document.getElementById('patientNameInput').value = '';
-            document.getElementById('diagnosisInput').value = '';
             document.getElementById('salesTableBody').innerHTML = '';
+            generateNewOrderCode();
             addSaleRow();
             calculateGrandTotal();
-
-            // Fetch lại để cập nhật số tồn kho mới
             fetchAllData();
         }
 
         function renderSalesHistory() {
             const container = document.getElementById('salesHistoryList');
             if (globalSalesOrders.length === 0) {
-                container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Chưa có đơn hàng nào</p>';
+                container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Chưa có phiếu bán nào</p>';
                 return;
             }
 
             container.innerHTML = globalSalesOrders.map(o => {
-                const dateStr = new Date(o.created_at).toLocaleString('vi-VN');
+                const dateStr = new Date(o.created_at).toLocaleDateString('vi-VN');
+                const timeStr = new Date(o.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                
                 let itemsSummary = '';
                 if (o.sales_order_items && o.sales_order_items.length > 0) {
                     itemsSummary = o.sales_order_items.map(i => {
                         const name = i.medicines ? i.medicines.name : 'Thuốc';
-                        return `• ${name}: ${i.quantity} ${i.medicines ? i.medicines.unit : ''} (${i.dosage_instruction || 'Không chỉ định'})`;
+                        return `• ${name}: ${i.quantity} ${i.medicines ? i.medicines.unit : ''}`;
                     }).join('<br>');
                 }
 
                 return `
                     <div class="border rounded-lg p-3 bg-gray-50 text-xs space-y-1">
                         <div class="flex justify-between font-bold text-gray-800">
-                            <span>👤 ${o.patient_name}</span>
-                            <span class="text-blue-600">${(o.total_amount || 0).toLocaleString('vi-VN')} đ</span>
+                            <span>🎫 ${o.order_code || 'PB'} | 👤 ${o.patient_name}</span>
+                            <span class="text-blue-600 font-bold">${(o.total_amount || 0).toLocaleString('vi-VN')} đ</span>
                         </div>
-                        <div class="text-gray-500">${dateStr} | NV: ${o.staff_name || 'N/A'}</div>
-                        ${o.diagnosis ? `<div class="text-purple-600 italic">Chẩn đoán: ${o.diagnosis}</div>` : ''}
+                        <div class="text-gray-500">📅 ${dateStr} lúc ${timeStr} | NV: ${o.staff_name || 'N/A'}</div>
                         <div class="text-gray-700 bg-white p-2 rounded border mt-1">
                             ${itemsSummary}
                         </div>
@@ -692,7 +737,7 @@
             }).join('');
         }
 
-        // ================= CÁC HÀM QUẢN LÝ NHẬP KHO & KHAI BÁO GIỮ NGUYÊN =================
+        // ================= CÁC HÀM QUẢN LÝ NHẬP KHO & KHAI BÁO (Giữ nguyên) =================
         function addImportRow(data = null) {
             const tbody = document.getElementById('importTableBody');
             const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
