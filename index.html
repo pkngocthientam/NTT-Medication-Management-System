@@ -135,22 +135,20 @@
     </div>
 
     <script>
-        // Cấu hình kết nối Supabase ẩn trực tiếp trong mã nguồn
-        const SUPABASE_URL = 'https://your-project.supabase.co';
-        const SUPABASE_ANON_KEY = 'your-anon-key';
+        // Cấu hình kết nối Supabase trực tiếp
+        const SUPABASE_URL = 'https://bwcolndcfhaxsgjuwwza.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3Y29sbmRjZmhheHNnanV3d3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNjIwMjYsImV4cCI6MjEwNzczODAyNn0.HRquyd3Q2QvQNITdgBwmk2zR3YSAfMjqfpFAXOXaPp8';
         
         let supabaseClient = null;
         let globalCategories = [];
         let globalMedicines = [];
 
         window.addEventListener('DOMContentLoaded', () => {
-            // Khởi tạo tự động kết nối Supabase
             try {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 document.getElementById('connectionStatus').textContent = 'Đã kết nối CSDL';
                 document.getElementById('connectionStatus').className = 'text-xs px-3 py-1 rounded bg-green-100 text-green-800 font-semibold';
                 
-                // Tải dữ liệu ban đầu
                 fetchAllData();
             } catch (err) {
                 document.getElementById('connectionStatus').textContent = 'Lỗi kết nối CSDL';
@@ -161,11 +159,9 @@
         async function fetchAllData() {
             if (!supabaseClient) return;
             
-            // Lấy nhóm thuốc
             const { data: catData } = await supabaseClient.from('medicine_categories').select('*').order('name');
             globalCategories = catData || [];
 
-            // Lấy danh mục thuốc kèm tên nhóm
             const { data: medData } = await supabaseClient.from('medicines').select('*, medicine_categories(name)').order('name');
             globalMedicines = medData || [];
 
@@ -187,7 +183,6 @@
             const catalogBtn = document.getElementById('tabCatalogBtn');
             const pricingBtn = document.getElementById('tabPricingBtn');
 
-            // Ẩn tất cả
             importSec.classList.add('hidden');
             catalogSec.classList.add('hidden');
             pricingSec.classList.add('hidden');
@@ -208,7 +203,6 @@
             }
         }
 
-        // --- XỬ LÝ TAB 2: KHAI BÁO NHÓM & TÊN THUỐC ---
         async function handleSaveCategory() {
             const name = document.getElementById('groupNameInput').value.trim();
             if (!name) { alert('Vui lòng nhập tên nhóm thuốc!'); return; }
@@ -265,7 +259,6 @@
             }
         }
 
-        // --- XỬ LÝ TAB 1: NHẬP THUỐC THEO LÔ ---
         function addImportRow() {
             const tbody = document.getElementById('importTableBody');
             const rowId = 'row_' + Date.now();
@@ -303,7 +296,6 @@
             tbody.appendChild(tr);
         }
 
-        // Tự động gợi ý giá nhập cũ khi chọn thuốc
         async function onSelectMedicineForImport(selectEl, rowId) {
             const medicineId = selectEl.value;
             if (!medicineId) return;
@@ -311,7 +303,6 @@
             const row = document.getElementById(rowId);
             const priceInput = row.querySelector('.price-input');
 
-            // Truy vấn lô hàng gần nhất của thuốc này để lấy giá nhập cũ
             const { data, error } = await supabaseClient
                 .from('inventory_batches')
                 .select('import_price')
@@ -361,7 +352,6 @@
             }
         }
 
-        // --- XỬ LÝ TAB 3: CẬP NHẬT GIÁ BÁN ---
         function renderPricingTable() {
             const tbody = document.getElementById('pricingTableBody');
             if (globalMedicines.length === 0) {
