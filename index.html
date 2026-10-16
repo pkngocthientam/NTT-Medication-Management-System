@@ -657,7 +657,6 @@
         }
 
         function calculateGrandTotal() {
-            // Tạm tính tổng đơn dựa trên số lượng & giá bán lẻ (nếu có)
             let total = 0;
             const rows = document.querySelectorAll('#salesTableBody tr');
             rows.forEach(row => {
@@ -682,7 +681,14 @@
                 const qty = parseInt(row.querySelector('.sale-qty-input').value) || 0;
                 if (!medId || qty <= 0) continue;
 
-                itemsToSave.push({ medicine_id: medId, quantity: qty });
+                const med = globalMedicines.find(m => m.id === medId);
+                const unitPrice = med ? (med.retail_price || 0) : 0;
+                itemsToSave.push({ 
+                    medicine_id: medId, 
+                    quantity: qty, 
+                    unit_price: unitPrice, 
+                    subtotal: qty * unitPrice 
+                });
             }
 
             if (itemsToSave.length === 0) {
@@ -691,17 +697,21 @@
             }
 
             const orderCode = document.getElementById('autoOrderCode').textContent.replace('Mã phiếu: ', '').trim();
-            const patientName = document.getElementById('patientNameInput').value.trim() || 'Khách lẻ';
-            const finalAmount = calculateGrandTotal();
+            const patientName = document.getElementById('patientNameInput'].value.trim() || 'Khách lẻ';
+            const totalAmount = calculateGrandTotal();
 
-            // 1. Tạo đơn hàng sales_orders
+            // 1. Tạo đơn hàng sales_orders (khớp chuẩn các cột bạn đã cung cấp)
             const { data: orderData, error: orderError } = await supabaseClient
                 .from('sales_orders')
                 .insert([{
                     order_code: orderCode,
                     patient_name: patientName,
                     staff_id: currentStaff.id,
-                    final_amount: finalAmount, // Đã fix truyền đầy đủ giá trị
+                    staff_name: currentStaff.fullname,
+                    total_amount: totalAmount,
+                    discount: 0,
+                    final_amount: totalAmount,
+                    payment_method: 'Tiền mặt',
                     created_at: new Date().toISOString()
                 }])
                 .select()
@@ -712,21 +722,24 @@
                 return;
             }
 
-            // 2. Thêm các chi tiết đơn sales_order_items & trừ tồn kho lô
+            // 2. Thêm các chi tiết đơn sales_order_items & trừ tồn kho lô theo FIFO
             for (let item of itemsToSave) {
-                await supabaseClient.from('sales_order_items').insert([{
-                    order_id: orderData.id,
-                    medicine_id: item.medicine_id,
-                    quantity: item.quantity,
-                    price: 0
-                }]);
-
-                // Trừ tồn kho từ các lô theo FIFO (lô cũ nhất trước)
-                let remainingQtyToSubtract = item.quantity;
+                // Lấy ra lô đầu tiên còn hàng để ghi nhận batch_id cho item nếu cần
                 const batches = globalBatches
                     .filter(b => b.medicine_id === item.medicine_id && (b.quantity_remaining || 0) > 0)
                     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
+                await supabaseClient.from('sales_order_items').insert([{
+                    order_id: orderData.id,
+                    medicine_id: item.medicine_id,
+                    batch_id: batches.length > 0 ? batches[0].id : null,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    subtotal: item.subtotal
+                }]);
+
+                // Trừ tồn kho từ các lô
+                let remainingQtyToSubtract = item.quantity;
                 for (let batch of batches) {
                     if (remainingQtyToSubtract <= 0) break;
                     const subtract = Math.min(batch.quantity_remaining, remainingQtyToSubtract);
@@ -902,7 +915,6 @@
 
             if (items.length === 0) return alert('Vui lòng thêm ít nhất một dòng thuốc nhập hợp lệ!');
 
-            // 1. Tạo phiếu nhập import_receipts
             const { data: receiptData, error } = await supabaseClient
                 .from('import_receipts')
                 .insert([{ import_date: receiptDate, note, staff_id: currentStaff.id }])
@@ -911,7 +923,6 @@
 
             if (error) return alert('Lỗi tạo phiếu nhập: ' + error.message);
 
-            // 2. Thêm lô hàng inventory_batches
             for (let item of items) {
                 await supabaseClient.from('inventory_batches').insert([{
                     receipt_id: receiptData.id,
