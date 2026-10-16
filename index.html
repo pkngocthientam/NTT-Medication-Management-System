@@ -15,21 +15,35 @@
             <span id="connectionStatus" class="text-xs px-3 py-1 rounded bg-yellow-100 text-yellow-800 font-semibold">Đang kết nối CSDL...</span>
         </div>
 
-        <!-- Thanh Tabs điều hướng quy trình chuẩn -->
+        <!-- Thanh Tabs điều hướng -->
         <div class="flex border-b mb-6 overflow-x-auto bg-white rounded-t shadow-sm">
-            <button onclick="switchTab('import')" id="tabImportBtn" class="py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap">📦 Nhập Thuốc Theo Lô</button>
+            <button onclick="switchTab('import')" id="tabImportBtn" class="py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap">📦 Nhập Kho Theo Ngày</button>
+            <button onclick="switchTab('history')" id="tabHistoryBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📜 Lịch Sử & Sửa Phiếu Nhập</button>
             <button onclick="switchTab('catalog')" id="tabCatalogBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📋 Khai Báo (Nhóm & Tên Thuốc)</button>
             <button onclick="switchTab('pricing')" id="tabPricingBtn" class="py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">💰 Cập Nhật Giá Bán</button>
         </div>
 
-        <!-- TAB 1: NHẬP THUỐC THEO LÔ -->
+        <!-- TAB 1: LẬP PHIẾU NHẬP KHO THEO NGÀY -->
         <div id="sectionImport" class="bg-white p-6 rounded-lg shadow mb-6">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b">
                 <div>
-                    <h2 class="text-lg font-semibold text-green-600">Lập Phiếu Nhập Kho Lô Hàng</h2>
-                    <p class="text-xs text-gray-500">Giá nhập sẽ tự động lấy theo lần nhập gần nhất của thuốc đó.</p>
+                    <h2 class="text-lg font-semibold text-green-600" id="importFormTitle">Lập Phiếu Nhập Kho Mới</h2>
+                    <p class="text-xs text-gray-500">Mỗi lần nhập sẽ tạo thành một phiếu riêng biệt theo ngày.</p>
                 </div>
-                <button onclick="addImportRow()" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">+ Thêm dòng thuốc</button>
+                <input type="hidden" id="editingReceiptId" value="">
+                <div class="flex items-center gap-3">
+                    <label class="text-sm font-medium text-gray-700">Ngày nhập:</label>
+                    <input type="date" id="receiptDate" class="border p-1.5 rounded text-sm font-semibold">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <input type="text" id="receiptNote" placeholder="Ghi chú phiếu nhập (VD: Nhập hàng công ty A đợt 1)..." class="border p-2 rounded w-full text-sm">
+            </div>
+
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-sm font-semibold text-gray-700">Danh sách thuốc trong phiếu:</h3>
+                <button onclick="addImportRow()" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-blue-600">+ Thêm dòng thuốc</button>
             </div>
 
             <div class="overflow-x-auto mb-4">
@@ -45,20 +59,44 @@
                         </tr>
                     </thead>
                     <tbody id="importTableBody">
-                        <!-- Render động bằng JS -->
+                        <!-- Render động -->
                     </tbody>
                 </table>
             </div>
 
-            <button onclick="handleBatchImport()" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 shadow">
-                Xác Nhận Nhập Kho Tất Cả
-            </button>
+            <div class="flex gap-3">
+                <button onclick="handleSaveReceipt()" id="saveReceiptBtn" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 shadow">
+                    Lưu Phiếu Nhập Kho
+                </button>
+                <button onclick="resetImportForm()" id="cancelReceiptBtn" class="bg-gray-400 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-500 hidden">
+                    Hủy sửa
+                </button>
+            </div>
         </div>
 
-        <!-- TAB 2: KHAI BÁO NHÓM & TÊN THUỐC -->
+        <!-- TAB 2: LỊCH SỬ & QUẢN LÝ PHIẾU NHẬP -->
+        <div id="sectionHistory" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
+            <h2 class="text-lg font-semibold text-blue-600 mb-4">📜 Lịch Sử Các Phiếu Nhập Kho</h2>
+            <div class="overflow-x-auto border rounded">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-100 border-b">
+                            <th class="p-3 text-left">Ngày Nhập</th>
+                            <th class="p-3 text-left">Ghi Chú Phiếu</th>
+                            <th class="p-3 text-center">Số Loại Thuốc</th>
+                            <th class="p-3 text-center w-36">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receiptsTableBody">
+                        <tr><td colspan="4" class="p-4 text-center text-gray-400">Đang tải lịch sử phiếu nhập...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: KHAI BÁO NHÓM & TÊN THUỐC -->
         <div id="sectionCatalog" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <!-- Cột trái: Khai báo Nhóm thuốc -->
                 <div class="border-r pr-0 md:pr-6">
                     <h3 class="text-md font-semibold text-purple-600 mb-3">1️⃣ Khai Báo Nhóm Thuốc</h3>
                     <div class="flex gap-2 mb-4">
@@ -68,9 +106,7 @@
                     <div class="border rounded max-h-60 overflow-y-auto">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50 border-b">
-                                <tr>
-                                    <th class="p-2 text-left">Tên Nhóm Thuốc</th>
-                                </tr>
+                                <tr><th class="p-2 text-left">Tên Nhóm Thuốc</th></tr>
                             </thead>
                             <tbody id="categoriesTableBody">
                                 <tr><td class="p-3 text-center text-gray-400">Đang tải danh sách nhóm...</td></tr>
@@ -79,9 +115,8 @@
                     </div>
                 </div>
 
-                <!-- Cột phải: Khai báo Tên thuốc -->
                 <div>
-                    <h3 class="text-md font-semibold text-blue-600 mb-3" id="formTitle">2️⃣ Khai Báo Tên Thuốc Mới</h3>
+                    <h3 class="text-md font-semibold text-blue-600 mb-3" id="medFormTitle">2️⃣ Khai Báo Tên Thuốc Mới</h3>
                     <input type="hidden" id="editingMedicineId" value="">
                     <div class="grid grid-cols-1 gap-3 mb-4">
                         <div>
@@ -110,17 +145,12 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="handleSaveMedicine()" id="saveMedicineBtn" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700">
-                            Lưu Tên Thuốc
-                        </button>
-                        <button onclick="resetMedicineForm()" id="cancelEditBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-500 hidden">
-                            Hủy sửa
-                        </button>
+                        <button onclick="handleSaveMedicine()" id="saveMedicineBtn" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700">Lưu Tên Thuốc</button>
+                        <button onclick="resetMedicineForm()" id="cancelEditMedBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-500 hidden">Hủy sửa</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Bảng quản lý danh mục thuốc đã tạo -->
             <div class="border-t pt-6">
                 <h3 class="text-md font-semibold text-gray-700 mb-3">📋 Danh Sách Tên Thuốc Đã Khai Báo</h3>
                 <div class="overflow-x-auto border rounded">
@@ -136,14 +166,14 @@
                             </tr>
                         </thead>
                         <tbody id="medicinesTableBody">
-                            <tr><td colspan="6" class="p-4 text-center text-gray-400">Đang tải danh sách thuốc...</td></tr>
+                            <tr><td colspan="6" class="p-4 text-center text-gray-400">Đang tải danh mục...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 3: CẬP NHẬT GIÁ BÁN -->
+        <!-- TAB 4: CẬP NHẬT GIÁ BÁN -->
         <div id="sectionPricing" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
             <h2 class="text-lg font-semibold text-orange-600 mb-4">Cập Nhật Giá Bán Lẻ Niêm Yết</h2>
             <div class="overflow-x-auto">
@@ -174,6 +204,7 @@
         let supabaseClient = null;
         let globalCategories = [];
         let globalMedicines = [];
+        let globalReceipts = [];
 
         window.addEventListener('DOMContentLoaded', () => {
             try {
@@ -181,6 +212,9 @@
                 document.getElementById('connectionStatus').textContent = 'Đã kết nối CSDL';
                 document.getElementById('connectionStatus').className = 'text-xs px-3 py-1 rounded bg-green-100 text-green-800 font-semibold';
                 
+                // Mặc định gán ngày hôm nay cho form nhập kho
+                document.getElementById('receiptDate').valueAsDate = new Date();
+
                 fetchAllData();
             } catch (err) {
                 document.getElementById('connectionStatus').textContent = 'Lỗi kết nối CSDL';
@@ -197,9 +231,13 @@
             const { data: medData } = await supabaseClient.from('medicines').select('*, medicine_categories(name)').order('name');
             globalMedicines = medData || [];
 
+            const { data: receiptData } = await supabaseClient.from('import_receipts').select('*, inventory_batches(*)').order('import_date', { ascending: false });
+            globalReceipts = receiptData || [];
+
             renderCategoriesTable();
             renderCategoryDropdowns();
             renderMedicinesTable();
+            renderReceiptsHistoryTable();
             renderPricingTable();
             
             if (document.getElementById('importTableBody').children.length === 0) {
@@ -209,24 +247,31 @@
 
         function switchTab(tab) {
             const importSec = document.getElementById('sectionImport');
+            const historySec = document.getElementById('sectionHistory');
             const catalogSec = document.getElementById('sectionCatalog');
             const pricingSec = document.getElementById('sectionPricing');
 
             const importBtn = document.getElementById('tabImportBtn');
+            const historyBtn = document.getElementById('tabHistoryBtn');
             const catalogBtn = document.getElementById('tabCatalogBtn');
             const pricingBtn = document.getElementById('tabPricingBtn');
 
             importSec.classList.add('hidden');
+            historySec.classList.add('hidden');
             catalogSec.classList.add('hidden');
             pricingSec.classList.add('hidden');
 
             importBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
+            historyBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
             catalogBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
             pricingBtn.className = 'py-3 px-5 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap';
 
             if (tab === 'import') {
                 importSec.classList.remove('hidden');
                 importBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
+            } else if (tab === 'history') {
+                historySec.classList.remove('hidden');
+                historyBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
             } else if (tab === 'catalog') {
                 catalogSec.classList.remove('hidden');
                 catalogBtn.className = 'py-3 px-5 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none whitespace-nowrap';
@@ -236,6 +281,211 @@
             }
         }
 
+        // --- TAB 1 & 2: QUẢN LÝ PHIẾU NHẬP & LÔ HÀNG ---
+        function addImportRow(data = null) {
+            const tbody = document.getElementById('importTableBody');
+            const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
+            
+            let optionsHtml = '<option value="">-- Chọn tên thuốc --</option>';
+            globalMedicines.forEach(m => {
+                const groupName = m.medicine_categories ? `[${m.medicine_categories.name}] ` : '';
+                const ingredientInfo = m.active_ingredient ? ` (${m.active_ingredient})` : '';
+                const selected = data && data.medicine_id === m.id ? 'selected' : '';
+                optionsHtml += `<option value="${m.id}" ${selected}>${groupName}${m.name}${ingredientInfo} - ĐVT: ${m.unit}</option>`;
+            });
+
+            const tr = document.createElement('tr');
+            tr.id = rowId;
+            tr.innerHTML = `
+                <td class="border p-2">
+                    <select class="border p-1.5 rounded w-full med-select text-sm" onchange="onSelectMedicineForImport(this, '${rowId}')">
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td class="border p-2">
+                    <input type="text" placeholder="VD: LOT01" value="${data ? data.batch_number : ''}" class="border p-1.5 rounded w-full batch-input text-sm">
+                </td>
+                <td class="border p-2">
+                    <input type="date" value="${data ? data.expiry_date : ''}" class="border p-1.5 rounded w-full expiry-input text-sm">
+                </td>
+                <td class="border p-2">
+                    <input type="number" placeholder="SL" value="${data ? data.quantity_imported : 1}" class="border p-1.5 rounded w-full qty-input text-center text-sm">
+                </td>
+                <td class="border p-2">
+                    <input type="number" placeholder="Giá nhập" value="${data ? data.import_price : ''}" class="border p-1.5 rounded w-full price-input text-right text-sm">
+                </td>
+                <td class="border p-2 text-center">
+                    <button onclick="document.getElementById('${rowId}').remove()" class="text-red-500 font-bold hover:text-red-700">✕</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        async function onSelectMedicineForImport(selectEl, rowId) {
+            const medicineId = selectEl.value;
+            if (!medicineId) return;
+
+            const row = document.getElementById(rowId);
+            const priceInput = row.querySelector('.price-input');
+            if (priceInput.value) return; // Nếu đã có giá thì không đè
+
+            const { data, error } = await supabaseClient
+                .from('inventory_batches')
+                .select('import_price')
+                .eq('medicine_id', medicineId)
+                .order('imported_at', { ascending: false })
+                .limit(1);
+
+            if (!error && data && data.length > 0) {
+                priceInput.value = data[0].import_price;
+            }
+        }
+
+        async function handleSaveReceipt() {
+            const editingId = document.getElementById('editingReceiptId').value;
+            const import_date = document.getElementById('receiptDate').value;
+            const note = document.getElementById('receiptNote').value.trim();
+
+            if (!import_date) {
+                alert('Vui lòng chọn ngày nhập kho!');
+                return;
+            }
+
+            const rows = document.querySelectorAll('#importTableBody tr');
+            if (rows.length === 0) { alert('Chưa có dòng thuốc nào trong phiếu!'); return; }
+
+            let batchList = [];
+            for (let row of rows) {
+                const medicine_id = row.querySelector('.med-select').value;
+                const batch_number = row.querySelector('.batch-input').value.trim();
+                const expiry_date = row.querySelector('.expiry-input').value;
+                const quantity_imported = parseInt(row.querySelector('.qty-input').value);
+                const import_price = parseFloat(row.querySelector('.price-input').value) || 0;
+
+                if (!medicine_id || !batch_number || !expiry_date || isNaN(quantity_imported)) {
+                    alert('Vui lòng điền đầy đủ thông tin các dòng nhập!');
+                    return;
+                }
+
+                batchList.push({
+                    medicine_id,
+                    batch_number,
+                    expiry_date,
+                    quantity_imported,
+                    quantity_remaining: quantity_imported,
+                    import_price
+                });
+            }
+
+            if (editingId) {
+                // Sửa phiếu: Cập nhật thông tin phiếu và thay thế toàn bộ lô hàng cũ bằng lô hàng mới
+                const { error: updateErr } = await supabaseClient.from('import_receipts').update({ import_date, note }).eq('id', editingId);
+                if (updateErr) { alert('Lỗi cập nhật phiếu: ' + updateErr.message); return; }
+
+                // Xóa các lô cũ của phiếu này
+                await supabaseClient.from('inventory_batches').delete().eq('receipt_id', editingId);
+
+                // Thêm lại các lô mới kèm receipt_id
+                batchList.forEach(b => b.receipt_id = editingId);
+                const { error: batchErr } = await supabaseClient.from('inventory_batches').insert(batchList);
+                if (batchErr) { alert('Lỗi lưu chi tiết lô: ' + batchErr.message); return; }
+
+                alert('Cập nhật phiếu nhập kho thành công!');
+            } else {
+                // Thêm mới phiếu nhập
+                const { data: receiptData, error: receiptErr } = await supabaseClient
+                    .from('import_receipts')
+                    .insert([{ import_date, note }])
+                    .select('id')
+                    .single();
+
+                if (receiptErr) { alert('Lỗi tạo phiếu: ' + receiptErr.message); return; }
+
+                const receiptId = receiptData.id;
+                batchList.forEach(b => b.receipt_id = receiptId);
+
+                const { error: batchErr } = await supabaseClient.from('inventory_batches').insert(batchList);
+                if (batchErr) { alert('Lỗi lưu chi tiết lô: ' + batchErr.message); return; }
+
+                alert('Lập phiếu nhập kho thành công!');
+            }
+
+            resetImportForm();
+            fetchAllData();
+            switchTab('history');
+        }
+
+        function renderReceiptsHistoryTable() {
+            const tbody = document.getElementById('receiptsTableBody');
+            if (globalReceipts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">Chưa có phiếu nhập kho nào</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = globalReceipts.map(r => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-semibold text-blue-600">${r.import_date}</td>
+                    <td class="p-3 text-gray-700">${r.note || '(Không có ghi chú)'}</td>
+                    <td class="p-3 text-center font-medium">${r.inventory_batches ? r.inventory_batches.length : 0} loại thuốc</td>
+                    <td class="p-3 text-center">
+                        <button onclick="editReceipt('${r.id}')" class="bg-yellow-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-yellow-600 mr-1">Sửa</button>
+                        <button onclick="deleteReceipt('${r.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-red-600">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editReceipt(receiptId) {
+            const receipt = globalReceipts.find(r => r.id === receiptId);
+            if (!receipt) return;
+
+            document.getElementById('editingReceiptId').value = receipt.id;
+            document.getElementById('receiptDate').value = receipt.import_date;
+            document.getElementById('receiptNote').value = receipt.note || '';
+
+            document.getElementById('importFormTitle').textContent = '✏️ Chỉnh Sửa Phiếu Nhập Kho';
+            document.getElementById('saveReceiptBtn').textContent = 'Cập Nhật Phiếu Nhập';
+            document.getElementById('saveReceiptBtn').className = 'bg-yellow-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-yellow-700 shadow';
+            document.getElementById('cancelReceiptBtn').classList.remove('hidden');
+
+            // Đổ danh sách thuốc vào bảng
+            const tbody = document.getElementById('importTableBody');
+            tbody.innerHTML = '';
+            if (receipt.inventory_batches && receipt.inventory_batches.length > 0) {
+                receipt.inventory_batches.forEach(b => addImportRow(b));
+            } else {
+                addImportRow();
+            }
+
+            switchTab('import');
+        }
+
+        async function deleteReceipt(receiptId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa phiếu nhập kho này? Các lô thuốc liên quan sẽ bị xóa khỏi kho.')) return;
+
+            const { error } = await supabaseClient.from('import_receipts').delete().eq('id', receiptId);
+            if (error) {
+                alert('Lỗi khi xóa phiếu: ' + error.message);
+            } else {
+                alert('Đã xóa phiếu nhập kho thành công!');
+                fetchAllData();
+            }
+        }
+
+        function resetImportForm() {
+            document.getElementById('editingReceiptId').value = '';
+            document.getElementById('receiptDate').valueAsDate = new Date();
+            document.getElementById('receiptNote').value = '';
+            document.getElementById('importTableBody').innerHTML = '';
+            addImportRow();
+
+            document.getElementById('importFormTitle').textContent = 'Lập Phiếu Nhập Kho Mới';
+            document.getElementById('saveReceiptBtn').textContent = 'Lưu Phiếu Nhập Kho';
+            document.getElementById('saveReceiptBtn').className = 'bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 shadow';
+            document.getElementById('cancelReceiptBtn').classList.add('hidden');
+        }
+
+        // --- TAB 3: KHAI BÁO NHÓM & TÊN THUỐC ---
         async function handleSaveCategory() {
             const name = document.getElementById('groupNameInput').value.trim();
             if (!name) { alert('Vui lòng nhập tên nhóm thuốc!'); return; }
@@ -257,9 +507,7 @@
                 return;
             }
             tbody.innerHTML = globalCategories.map(c => `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="p-2.5 font-medium text-gray-700">${c.name}</td>
-                </tr>
+                <tr class="border-b hover:bg-gray-50"><td class="p-2.5 font-medium text-gray-700">${c.name}</td></tr>
             `).join('');
         }
 
@@ -269,7 +517,6 @@
                 globalCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         }
 
-        // --- QUẢN LÝ LƯU & SỬA THÔNG TIN THUỐC ---
         async function handleSaveMedicine() {
             const editingId = document.getElementById('editingMedicineId').value;
             const category_id = document.getElementById('medCategorySelect').value;
@@ -286,25 +533,13 @@
             const payload = { category_id, code, name, unit, active_ingredient };
 
             if (editingId) {
-                // Cập nhật thuốc cũ
                 const { error } = await supabaseClient.from('medicines').update(payload).eq('id', editingId);
-                if (error) {
-                    alert('Lỗi cập nhật: ' + error.message);
-                } else {
-                    alert('Cập nhật thông tin thuốc thành công!');
-                    resetMedicineForm();
-                    fetchAllData();
-                }
+                if (error) { alert('Lỗi cập nhật: ' + error.message); } 
+                else { alert('Cập nhật thông tin thuốc thành công!'); resetMedicineForm(); fetchAllData(); }
             } else {
-                // Thêm mới thuốc
                 const { error } = await supabaseClient.from('medicines').insert([payload]);
-                if (error) {
-                    alert('Lỗi thêm mới: ' + error.message);
-                } else {
-                    alert('Thêm tên thuốc thành công!');
-                    resetMedicineForm();
-                    fetchAllData();
-                }
+                if (error) { alert('Lỗi thêm mới: ' + error.message); } 
+                else { alert('Thêm tên thuốc thành công!'); resetMedicineForm(); fetchAllData(); }
             }
         }
 
@@ -340,13 +575,10 @@
             document.getElementById('medUnitInput').value = med.unit || '';
             document.getElementById('medIngredientInput').value = med.active_ingredient || '';
 
-            document.getElementById('formTitle').textContent = '✏️ Chỉnh Sửa Thông Tin Thuốc';
+            document.getElementById('medFormTitle').textContent = '✏️ Chỉnh Sửa Thông Tin Thuốc';
             document.getElementById('saveMedicineBtn').textContent = 'Cập Nhật Thay Đổi';
             document.getElementById('saveMedicineBtn').className = 'bg-yellow-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-yellow-700';
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
-
-            // Cuộn lên đầu form khai báo tên thuốc cho dễ nhìn
-            document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('cancelEditMedBtn').classList.remove('hidden');
         }
 
         function resetMedicineForm() {
@@ -357,106 +589,13 @@
             document.getElementById('medUnitInput').value = '';
             document.getElementById('medIngredientInput').value = '';
 
-            document.getElementById('formTitle').textContent = '2️⃣ Khai Báo Tên Thuốc Mới';
+            document.getElementById('medFormTitle').textContent = '2️⃣ Khai Báo Tên Thuốc Mới';
             document.getElementById('saveMedicineBtn').textContent = 'Lưu Tên Thuốc';
             document.getElementById('saveMedicineBtn').className = 'bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700';
-            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('cancelEditMedBtn').classList.add('hidden');
         }
 
-        function addImportRow() {
-            const tbody = document.getElementById('importTableBody');
-            const rowId = 'row_' + Date.now();
-            
-            let optionsHtml = '<option value="">-- Chọn tên thuốc --</option>';
-            globalMedicines.forEach(m => {
-                const groupName = m.medicine_categories ? `[${m.medicine_categories.name}] ` : '';
-                const ingredientInfo = m.active_ingredient ? ` (${m.active_ingredient})` : '';
-                optionsHtml += `<option value="${m.id}">${groupName}${m.name}${ingredientInfo} - ĐVT: ${m.unit}</option>`;
-            });
-
-            const tr = document.createElement('tr');
-            tr.id = rowId;
-            tr.innerHTML = `
-                <td class="border p-2">
-                    <select class="border p-1.5 rounded w-full med-select text-sm" onchange="onSelectMedicineForImport(this, '${rowId}')">
-                        ${optionsHtml}
-                    </select>
-                </td>
-                <td class="border p-2">
-                    <input type="text" placeholder="VD: LOT01" class="border p-1.5 rounded w-full batch-input text-sm">
-                </td>
-                <td class="border p-2">
-                    <input type="date" class="border p-1.5 rounded w-full expiry-input text-sm">
-                </td>
-                <td class="border p-2">
-                    <input type="number" placeholder="SL" class="border p-1.5 rounded w-full qty-input text-center text-sm" value="1">
-                </td>
-                <td class="border p-2">
-                    <input type="number" placeholder="Giá nhập" class="border p-1.5 rounded w-full price-input text-right text-sm">
-                </td>
-                <td class="border p-2 text-center">
-                    <button onclick="document.getElementById('${rowId}').remove()" class="text-red-500 font-bold hover:text-red-700">✕</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        }
-
-        async function onSelectMedicineForImport(selectEl, rowId) {
-            const medicineId = selectEl.value;
-            if (!medicineId) return;
-
-            const row = document.getElementById(rowId);
-            const priceInput = row.querySelector('.price-input');
-
-            const { data, error } = await supabaseClient
-                .from('inventory_batches')
-                .select('import_price')
-                .eq('medicine_id', medicineId)
-                .order('imported_at', { ascending: false })
-                .limit(1);
-
-            if (!error && data && data.length > 0) {
-                priceInput.value = data[0].import_price;
-            }
-        }
-
-        async function handleBatchImport() {
-            const rows = document.querySelectorAll('#importTableBody tr');
-            if (rows.length === 0) { alert('Chưa có dòng thuốc nào!'); return; }
-
-            let batchList = [];
-            for (let row of rows) {
-                const medicine_id = row.querySelector('.med-select').value;
-                const batch_number = row.querySelector('.batch-input').value.trim();
-                const expiry_date = row.querySelector('.expiry-input').value;
-                const quantity_imported = parseInt(row.querySelector('.qty-input').value);
-                const import_price = parseFloat(row.querySelector('.price-input').value) || 0;
-
-                if (!medicine_id || !batch_number || !expiry_date || isNaN(quantity_imported)) {
-                    alert('Vui lòng điền đầy đủ thông tin các dòng nhập!');
-                    return;
-                }
-
-                batchList.push({
-                    medicine_id,
-                    batch_number,
-                    expiry_date,
-                    quantity_imported,
-                    quantity_remaining: quantity_imported,
-                    import_price
-                });
-            }
-
-            const { error } = await supabaseClient.from('inventory_batches').insert(batchList);
-            if (error) {
-                alert('Lỗi nhập kho: ' + error.message);
-            } else {
-                alert('Nhập kho thành công hàng loạt!');
-                document.getElementById('importTableBody').innerHTML = '';
-                addImportRow();
-            }
-        }
-
+        // --- TAB 4: CẬP NHẬT GIÁ BÁN ---
         function renderPricingTable() {
             const tbody = document.getElementById('pricingTableBody');
             if (globalMedicines.length === 0) {
@@ -485,7 +624,7 @@
             const newPrice = parseFloat(document.getElementById(`price_${id}`).value);
             if (isNaN(newPrice) || newPrice < 0) { alert('Giá bán không hợp lệ!'); return; }
 
-            const { error } = await supabaseClient.from('medicines').update({ selling_price: newPrice }).eq('id', id);
+            const { error} = await supabaseClient.from('medicines').update({ selling_price: newPrice }).eq('id', id);
             if (error) {
                 alert('Lỗi cập nhật giá: ' + error.message);
             } else {
