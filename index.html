@@ -81,10 +81,10 @@
                 <table class="w-full border-collapse text-sm">
                     <thead>
                         <tr class="bg-gray-100 border-b">
-                            <th class="p-3 text-left">Ngày Nhập</th>
+                            <th class="p-3 text-left w-28">Ngày Nhập</th>
                             <th class="p-3 text-left">Ghi Chú Phiếu</th>
-                            <th class="p-3 text-center">Số Loại Thuốc</th>
-                            <th class="p-3 text-center w-36">Thao tác</th>
+                            <th class="p-3 text-left">Danh Sách Thuốc & Số Lượng</th>
+                            <th class="p-3 text-center w-32">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody id="receiptsTableBody">
@@ -212,9 +212,7 @@
                 document.getElementById('connectionStatus').textContent = 'Đã kết nối CSDL';
                 document.getElementById('connectionStatus').className = 'text-xs px-3 py-1 rounded bg-green-100 text-green-800 font-semibold';
                 
-                // Mặc định gán ngày hôm nay cho form nhập kho
                 document.getElementById('receiptDate').valueAsDate = new Date();
-
                 fetchAllData();
             } catch (err) {
                 document.getElementById('connectionStatus').textContent = 'Lỗi kết nối CSDL';
@@ -228,10 +226,15 @@
             const { data: catData } = await supabaseClient.from('medicine_categories').select('*').order('name');
             globalCategories = catData || [];
 
+            // Lấy danh sách thuốc kèm tên nhóm
             const { data: medData } = await supabaseClient.from('medicines').select('*, medicine_categories(name)').order('name');
             globalMedicines = medData || [];
 
-            const { data: receiptData } = await supabaseClient.from('import_receipts').select('*, inventory_batches(*)').order('import_date', { ascending: false });
+            // Lấy phiếu nhập và các lô hàng đi kèm (kèm theo thông tin tên thuốc trong bảng medicines)
+            const { data: receiptData } = await supabaseClient
+                .from('import_receipts')
+                .select('*, inventory_batches(*, medicines(name, unit))')
+                .order('import_date', { ascending: false });
             globalReceipts = receiptData || [];
 
             renderCategoriesTable();
@@ -327,7 +330,7 @@
 
             const row = document.getElementById(rowId);
             const priceInput = row.querySelector('.price-input');
-            if (priceInput.value) return; // Nếu đã có giá thì không đè
+            if (priceInput.value) return;
 
             const { data, error } = await supabaseClient
                 .from('inventory_batches')
@@ -378,21 +381,17 @@
             }
 
             if (editingId) {
-                // Sửa phiếu: Cập nhật thông tin phiếu và thay thế toàn bộ lô hàng cũ bằng lô hàng mới
                 const { error: updateErr } = await supabaseClient.from('import_receipts').update({ import_date, note }).eq('id', editingId);
                 if (updateErr) { alert('Lỗi cập nhật phiếu: ' + updateErr.message); return; }
 
-                // Xóa các lô cũ của phiếu này
                 await supabaseClient.from('inventory_batches').delete().eq('receipt_id', editingId);
 
-                // Thêm lại các lô mới kèm receipt_id
                 batchList.forEach(b => b.receipt_id = editingId);
                 const { error: batchErr } = await supabaseClient.from('inventory_batches').insert(batchList);
                 if (batchErr) { alert('Lỗi lưu chi tiết lô: ' + batchErr.message); return; }
 
                 alert('Cập nhật phiếu nhập kho thành công!');
             } else {
-                // Thêm mới phiếu nhập
                 const { data: receiptData, error: receiptErr } = await supabaseClient
                     .from('import_receipts')
                     .insert([{ import_date, note }])
@@ -422,17 +421,29 @@
                 return;
             }
 
-            tbody.innerHTML = globalReceipts.map(r => `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="p-3 font-semibold text-blue-600">${r.import_date}</td>
-                    <td class="p-3 text-gray-700">${r.note || '(Không có ghi chú)'}</td>
-                    <td class="p-3 text-center font-medium">${r.inventory_batches ? r.inventory_batches.length : 0} loại thuốc</td>
-                    <td class="p-3 text-center">
-                        <button onclick="editReceipt('${r.id}')" class="bg-yellow-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-yellow-600 mr-1">Sửa</button>
-                        <button onclick="deleteReceipt('${r.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-red-600">Xóa</button>
-                    </td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = globalReceipts.map(r => {
+                // Hiển thị danh sách thuốc ngắn gọn: "Curam - 10 viên, Paracetamol - 50 viên"
+                let itemsSummary = '<span class="text-gray-400">Chưa có thuốc</span>';
+                if (r.inventory_batches && r.inventory_batches.length > 0) {
+                    itemsSummary = r.inventory_batches.map(b => {
+                        const medName = b.medicines ? b.medicines.name : 'Thuốc không xác định';
+                        const unit = b.medicines ? b.medicines.unit : '';
+                        return `<span class="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-blue-200">${medName} - ${b.quantity_imported} ${unit} (Lô: ${b.batch_number})</span>`;
+                    }).join('');
+                }
+
+                return `
+                    <tr class="border-b hover:bg-gray-50 align-top">
+                        <td class="p-3 font-semibold text-blue-600 whitespace-nowrap">${r.import_date}</td>
+                        <td class="p-3 text-gray-700">${r.note || '(Không có ghi chú)'}</td>
+                        <td class="p-3">${itemsSummary}</td>
+                        <td class="p-3 text-center whitespace-nowrap">
+                            <button onclick="editReceipt('${r.id}')" class="bg-yellow-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-yellow-600 mr-1">Sửa</button>
+                            <button onclick="deleteReceipt('${r.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-red-600">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function editReceipt(receiptId) {
@@ -448,7 +459,6 @@
             document.getElementById('saveReceiptBtn').className = 'bg-yellow-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-yellow-700 shadow';
             document.getElementById('cancelReceiptBtn').classList.remove('hidden');
 
-            // Đổ danh sách thuốc vào bảng
             const tbody = document.getElementById('importTableBody');
             tbody.innerHTML = '';
             if (receipt.inventory_batches && receipt.inventory_batches.length > 0) {
@@ -624,7 +634,7 @@
             const newPrice = parseFloat(document.getElementById(`price_${id}`).value);
             if (isNaN(newPrice) || newPrice < 0) { alert('Giá bán không hợp lệ!'); return; }
 
-            const { error} = await supabaseClient.from('medicines').update({ selling_price: newPrice }).eq('id', id);
+            const { error } = await supabaseClient.from('medicines').update({ selling_price: newPrice }).eq('id', id);
             if (error) {
                 alert('Lỗi cập nhật giá: ' + error.message);
             } else {
