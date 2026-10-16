@@ -57,12 +57,12 @@
 
         <!-- TAB 2: KHAI BÁO NHÓM & TÊN THUỐC -->
         <div id="sectionCatalog" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <!-- Cột trái: Khai báo Nhóm thuốc -->
                 <div class="border-r pr-0 md:pr-6">
                     <h3 class="text-md font-semibold text-purple-600 mb-3">1️⃣ Khai Báo Nhóm Thuốc</h3>
                     <div class="flex gap-2 mb-4">
-                        <input type="text" id="groupNameInput" placeholder="VD: Kháng sinh, Giảm đau, Long đờm..." class="border p-2 rounded w-full text-sm">
+                        <input type="text" id="groupNameInput" placeholder="VD: Kháng sinh, Giảm đau..." class="border p-2 rounded w-full text-sm">
                         <button onclick="handleSaveCategory()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-700 whitespace-nowrap">Thêm Nhóm</button>
                     </div>
                     <div class="border rounded max-h-60 overflow-y-auto">
@@ -81,7 +81,8 @@
 
                 <!-- Cột phải: Khai báo Tên thuốc -->
                 <div>
-                    <h3 class="text-md font-semibold text-blue-600 mb-3">2️⃣ Khai Báo Tên Thuốc Mới</h3>
+                    <h3 class="text-md font-semibold text-blue-600 mb-3" id="formTitle">2️⃣ Khai Báo Tên Thuốc Mới</h3>
+                    <input type="hidden" id="editingMedicineId" value="">
                     <div class="grid grid-cols-1 gap-3 mb-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Thuộc nhóm thuốc</label>
@@ -108,9 +109,36 @@
                             <input type="text" id="medIngredientInput" placeholder="VD: Amoxicillin / Clavulanate" class="border p-2 rounded w-full text-sm">
                         </div>
                     </div>
-                    <button onclick="handleSaveMedicine()" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700">
-                        Lưu Tên Thuốc Vào Danh Mục
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="handleSaveMedicine()" id="saveMedicineBtn" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700">
+                            Lưu Tên Thuốc
+                        </button>
+                        <button onclick="resetMedicineForm()" id="cancelEditBtn" class="bg-gray-400 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-500 hidden">
+                            Hủy sửa
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng quản lý danh mục thuốc đã tạo -->
+            <div class="border-t pt-6">
+                <h3 class="text-md font-semibold text-gray-700 mb-3">📋 Danh Sách Tên Thuốc Đã Khai Báo</h3>
+                <div class="overflow-x-auto border rounded">
+                    <table class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="p-2.5 text-left">Mã</th>
+                                <th class="p-2.5 text-left">Tên thuốc</th>
+                                <th class="p-2.5 text-left">Nhóm</th>
+                                <th class="p-2.5 text-left">Thành phần gốc</th>
+                                <th class="p-2.5 text-center">ĐVT</th>
+                                <th class="p-2.5 text-center w-24">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medicinesTableBody">
+                            <tr><td colspan="6" class="p-4 text-center text-gray-400">Đang tải danh sách thuốc...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -171,6 +199,7 @@
 
             renderCategoriesTable();
             renderCategoryDropdowns();
+            renderMedicinesTable();
             renderPricingTable();
             
             if (document.getElementById('importTableBody').children.length === 0) {
@@ -240,7 +269,9 @@
                 globalCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         }
 
+        // --- QUẢN LÝ LƯU & SỬA THÔNG TIN THUỐC ---
         async function handleSaveMedicine() {
+            const editingId = document.getElementById('editingMedicineId').value;
             const category_id = document.getElementById('medCategorySelect').value;
             const code = document.getElementById('medCodeInput').value.trim().toUpperCase();
             const name = document.getElementById('medNameInput').value.trim();
@@ -252,20 +283,84 @@
                 return;
             }
 
-            const { error } = await supabaseClient.from('medicines').insert([{ 
-                category_id, code, name, unit, active_ingredient 
-            }]);
-            
-            if (error) {
-                alert('Lỗi: ' + error.message);
+            const payload = { category_id, code, name, unit, active_ingredient };
+
+            if (editingId) {
+                // Cập nhật thuốc cũ
+                const { error } = await supabaseClient.from('medicines').update(payload).eq('id', editingId);
+                if (error) {
+                    alert('Lỗi cập nhật: ' + error.message);
+                } else {
+                    alert('Cập nhật thông tin thuốc thành công!');
+                    resetMedicineForm();
+                    fetchAllData();
+                }
             } else {
-                alert('Thêm tên thuốc thành công!');
-                document.getElementById('medCodeInput').value = '';
-                document.getElementById('medNameInput').value = '';
-                document.getElementById('medUnitInput').value = '';
-                document.getElementById('medIngredientInput').value = '';
-                fetchAllData();
+                // Thêm mới thuốc
+                const { error } = await supabaseClient.from('medicines').insert([payload]);
+                if (error) {
+                    alert('Lỗi thêm mới: ' + error.message);
+                } else {
+                    alert('Thêm tên thuốc thành công!');
+                    resetMedicineForm();
+                    fetchAllData();
+                }
             }
+        }
+
+        function renderMedicinesTable() {
+            const tbody = document.getElementById('medicinesTableBody');
+            if (globalMedicines.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">Chưa có thuốc nào trong danh mục</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = globalMedicines.map(m => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2.5 font-semibold text-gray-600">${m.code}</td>
+                    <td class="p-2.5 font-medium text-gray-800">${m.name}</td>
+                    <td class="p-2.5 text-gray-600">${m.medicine_categories ? m.medicine_categories.name : '-'}</td>
+                    <td class="p-2.5 text-gray-600">${m.active_ingredient || '-'}</td>
+                    <td class="p-2.5 text-center">${m.unit}</td>
+                    <td class="p-2.5 text-center">
+                        <button onclick="editMedicine('${m.id}')" class="bg-yellow-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-yellow-600">Sửa</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editMedicine(id) {
+            const med = globalMedicines.find(m => m.id === id);
+            if (!med) return;
+
+            document.getElementById('editingMedicineId').value = med.id;
+            document.getElementById('medCategorySelect').value = med.category_id || '';
+            document.getElementById('medCodeInput').value = med.code || '';
+            document.getElementById('medNameInput').value = med.name || '';
+            document.getElementById('medUnitInput').value = med.unit || '';
+            document.getElementById('medIngredientInput').value = med.active_ingredient || '';
+
+            document.getElementById('formTitle').textContent = '✏️ Chỉnh Sửa Thông Tin Thuốc';
+            document.getElementById('saveMedicineBtn').textContent = 'Cập Nhật Thay Đổi';
+            document.getElementById('saveMedicineBtn').className = 'bg-yellow-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-yellow-700';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            // Cuộn lên đầu form khai báo tên thuốc cho dễ nhìn
+            document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetMedicineForm() {
+            document.getElementById('editingMedicineId').value = '';
+            document.getElementById('medCategorySelect').value = '';
+            document.getElementById('medCodeInput').value = '';
+            document.getElementById('medNameInput').value = '';
+            document.getElementById('medUnitInput').value = '';
+            document.getElementById('medIngredientInput').value = '';
+
+            document.getElementById('formTitle').textContent = '2️⃣ Khai Báo Tên Thuốc Mới';
+            document.getElementById('saveMedicineBtn').textContent = 'Lưu Tên Thuốc';
+            document.getElementById('saveMedicineBtn').className = 'bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
         }
 
         function addImportRow() {
