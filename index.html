@@ -13,7 +13,7 @@
     <div id="loginScreen" class="fixed inset-0 bg-blue-900 bg-opacity-90 flex items-center justify-center z-50 p-4">
         <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
             <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-blue-600">🏥 Phòng Khám Ngọc Thiên Tâm</h2>
+                <h2 class="text-2xl font-bold text-blue-600">🏥 Phòng Khám Đa Khoa</h2>
                 <p class="text-sm text-gray-500 mt-1">Vui lòng đăng nhập để tiếp tục</p>
             </div>
             <div class="space-y-4">
@@ -49,7 +49,7 @@
         <div class="grid grid-cols-2 gap-4 mb-6">
             <button onclick="switchMainTab('sales')" id="mainTabSales" class="py-5 px-6 rounded-xl font-bold text-lg text-center shadow transition bg-blue-600 text-white border-2 border-blue-600">
                 💰 BÁN THUỐC NHANH
-                <p class="text-xs font-normal mt-1 opacity-90">Kê đơn siêu tốc, tìm kiếm nhanh & trừ kho tự động</p>
+                <p class="text-xs font-normal mt-1 opacity-90">Kê đơn siêu tốc bằng phím mũi tên & Enter</p>
             </button>
             <button onclick="switchMainTab('management')" id="mainTabManagement" class="py-5 px-6 rounded-xl font-bold text-lg text-center shadow transition bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-400">
                 📦 NHẬP KHO & QUẢN LÝ
@@ -65,7 +65,7 @@
                     <div class="flex justify-between items-center border-b pb-3">
                         <div>
                             <h2 class="text-lg font-bold text-blue-600">⚡ Lập Phiếu Bán Thuốc Nhanh</h2>
-                            <p class="text-xs text-gray-500">Gõ tên thuốc để chọn nhanh, nhấn Tab sang số lượng, nhấn Enter thêm dòng mới.</p>
+                            <p class="text-xs text-gray-500">Gõ tên thuốc ➔ Dùng phím <b>Mũi tên lên/xuống</b> chọn ➔ <b>Enter</b> sang số lượng ➔ <b>Enter</b> tiếp thêm dòng mới.</p>
                         </div>
                         <span id="autoOrderCode" class="text-xs font-mono bg-gray-100 px-2.5 py-1 rounded border font-bold text-gray-600">Mã: --</span>
                     </div>
@@ -75,7 +75,7 @@
                         <input type="text" id="patientNameInput" placeholder="Nhập tên bệnh nhân hoặc để trống (Khách lẻ)..." class="border p-2 rounded w-full text-sm">
                     </div>
 
-                    <div class="overflow-x-auto min-h-[200px]">
+                    <div class="overflow-x-auto min-h-[220px]">
                         <table class="w-full border-collapse border border-gray-200 text-sm">
                             <thead>
                                 <tr class="bg-gray-100">
@@ -101,7 +101,7 @@
                     </div>
 
                     <button onclick="handleCompleteSale()" id="completeSaleBtn" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-base hover:bg-green-700 shadow-md transition">
-                        ✅ Hoàn Thành Bán & Trừ Kho (Enter)
+                        ✅ Hoàn Thành Bán & Trừ Kho
                     </button>
                 </div>
 
@@ -490,7 +490,7 @@
             }
         }
 
-        // ================= XỬ LÝ BÁN THUỐC SIÊU TỐC =================
+        // ================= XỬ LÝ BÁN THUỐC SIÊU TỐC VỚI PHÍM MŨI TÊN =================
         function addSaleRow() {
             const tbody = document.getElementById('salesTableBody');
             const rowId = 'sale_row_' + Date.now() + Math.random().toString(36).substring(2, 5);
@@ -500,13 +500,13 @@
             tr.className = 'border-b';
             tr.innerHTML = `
                 <td class="border p-2 relative">
-                    <input type="text" placeholder="Gõ tên thuốc (VD: Cur)..." class="border p-1.5 rounded w-full sale-med-input text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" oninput="filterSaleMedicines(this, '${rowId}')" autocomplete="off">
+                    <input type="text" placeholder="Gõ tên thuốc (VD: Cur)..." class="border p-1.5 rounded w-full sale-med-input text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" oninput="filterSaleMedicines(this, '${rowId}')" onkeydown="handleInputKeydown(event, '${rowId}')" autocomplete="off">
                     <input type="hidden" class="sale-med-id" value="">
                     <!-- Dropdown gợi ý -->
                     <div class="sale-suggestions absolute left-0 right-0 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-20 hidden mt-1"></div>
                 </td>
                 <td class="border p-2 text-center">
-                    <input type="number" value="1" min="1" oninput="validateStockAndTotal('${rowId}')" onkeydown="handleSaleKeydown(event, '${rowId}')" class="border p-1.5 rounded w-20 sale-qty-input text-center text-sm font-semibold">
+                    <input type="number" value="1" min="1" oninput="validateStockAndTotal('${rowId}')" onkeydown="handleQtyKeydown(event, '${rowId}')" class="border p-1.5 rounded w-20 sale-qty-input text-center text-sm font-semibold">
                     <div class="text-[10px] text-gray-400 mt-0.5 stock-info-text">Tồn: 0</div>
                 </td>
                 <td class="border p-2 text-center">
@@ -538,14 +538,55 @@
                 return;
             }
 
-            dropdown.innerHTML = matched.map(m => {
+            dropdown.innerHTML = matched.map((m, index) => {
                 const stock = globalBatches.filter(b => b.medicine_id === m.id).reduce((s, b) => s + (b.quantity_remaining || 0), 0);
-                return `<div onclick="selectSaleMedicine('${m.id}', '${m.name.replace(/'/g, "\\'")}', ${stock}, ${m.selling_price || 0}, '${rowId}')" class="p-2 hover:bg-blue-50 cursor-pointer text-xs border-b flex justify-between items-center">
+                const activeClass = index === 0 ? 'bg-blue-50 selected-sugg' : '';
+                return `<div onclick="selectSaleMedicine('${m.id}', '${m.name.replace(/'/g, "\\'")}', ${stock}, ${m.selling_price || 0}, '${rowId}')" 
+                    class="sugg-item p-2 hover:bg-blue-50 cursor-pointer text-xs border-b flex justify-between items-center ${activeClass}" 
+                    data-id="${m.id}" data-name="${m.name.replace(/'/g, "\\'")}" data-stock="${stock}" data-price="${m.selling_price || 0}">
                     <span class="font-medium text-gray-800">${m.name} (${m.unit})</span>
                     <span class="text-blue-600 font-bold">Tồn: ${stock} | ${(m.selling_price || 0).toLocaleString()}đ</span>
                 </div>`;
             }).join('');
             dropdown.classList.remove('hidden');
+        }
+
+        function handleInputKeydown(event, rowId) {
+            const row = document.getElementById(rowId);
+            const dropdown = row.querySelector('.sale-suggestions');
+            const items = dropdown.querySelectorAll('.sugg-item');
+
+            if (dropdown.classList.contains('hidden') || items.length === 0) return;
+
+            let currentIndex = Array.from(items).findIndex(i => i.classList.contains('bg-blue-50'));
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (currentIndex < items.length - 1) {
+                    items[currentIndex].classList.remove('bg-blue-50');
+                    items[currentIndex + 1].classList.add('bg-blue-50');
+                    items[currentIndex + 1].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (currentIndex > 0) {
+                    items[currentIndex].classList.remove('bg-blue-50');
+                    items[currentIndex - 1].classList.add('bg-blue-50');
+                    items[currentIndex - 1].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                const activeItem = dropdown.querySelector('.sugg-item.bg-blue-50') || items[0];
+                if (activeItem) {
+                    selectSaleMedicine(
+                        activeItem.dataset.id,
+                        activeItem.dataset.name,
+                        parseInt(activeItem.dataset.stock),
+                        parseFloat(activeItem.dataset.price),
+                        rowId
+                    );
+                }
+            }
         }
 
         function selectSaleMedicine(id, name, stock, price, rowId) {
@@ -600,15 +641,13 @@
             }
         }
 
-        function handleSaleKeydown(event, rowId) {
+        function handleQtyKeydown(event, rowId) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                // Nếu là dòng cuối, tự động thêm dòng mới
                 const rows = document.querySelectorAll('#salesTableBody tr');
                 if (rows[rows.length - 1].id === rowId) {
                     addSaleRow();
                 } else {
-                    // Chuyển focus sang dòng tiếp theo
                     const nextRow = rows[Array.from(rows).findIndex(r => r.id === rowId) + 1];
                     if (nextRow) nextRow.querySelector('.sale-med-input').focus();
                 }
