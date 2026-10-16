@@ -697,10 +697,10 @@
             }
 
             const orderCode = document.getElementById('autoOrderCode').textContent.replace('Mã phiếu: ', '').trim();
-            const patientName = document.getElementById('patientNameInput'].value.trim() || 'Khách lẻ';
+            const patientName = document.getElementById('patientNameInput').value.trim() || 'Khách lẻ';
             const totalAmount = calculateGrandTotal();
 
-            // 1. Tạo đơn hàng sales_orders (khớp chuẩn các cột bạn đã cung cấp)
+            // 1. Tạo đơn hàng sales_orders (khớp chuẩn các cột)
             const { data: orderData, error: orderError } = await supabaseClient
                 .from('sales_orders')
                 .insert([{
@@ -724,7 +724,6 @@
 
             // 2. Thêm các chi tiết đơn sales_order_items & trừ tồn kho lô theo FIFO
             for (let item of itemsToSave) {
-                // Lấy ra lô đầu tiên còn hàng để ghi nhận batch_id cho item nếu cần
                 const batches = globalBatches
                     .filter(b => b.medicine_id === item.medicine_id && (b.quantity_remaining || 0) > 0)
                     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -738,7 +737,6 @@
                     subtotal: item.subtotal
                 }]);
 
-                // Trừ tồn kho từ các lô
                 let remainingQtyToSubtract = item.quantity;
                 for (let batch of batches) {
                     if (remainingQtyToSubtract <= 0) break;
