@@ -1764,7 +1764,8 @@
         }
     </script>
     <script>
-// ===== BẢN VÁ: ghi đè các hàm cũ =====
+<script>
+// ===== BẢN VÁ v2: khớp cấu trúc bảng sales_order_items (unit_price, batch_id) =====
 
 async function fetchAllData() {
     if (!supabaseClient) return;
@@ -1795,17 +1796,27 @@ async function fetchAllData() {
     }
 
     globalSalesOrders = (salesData || []).map(order => {
-        const items = (salesItemsData || [])
-            .filter(item => item.order_id === order.id)
-            .map(item => {
-                const med = globalMedicines.find(m => m.id === item.medicine_id) || null;
-                return {
-                    ...item,
-                    price: item.price != null ? item.price : (med ? (med.selling_price || 0) : 0),
-                    medicines: med
+        const rawRows = (salesItemsData || []).filter(r => r.order_id === order.id);
+
+        // Gộp các dòng cùng thuốc (do bán từ nhiều lô) thành một dòng để hiển thị
+        const grouped = {};
+        rawRows.forEach(r => {
+            const med = globalMedicines.find(m => m.id === r.medicine_id) || null;
+            const unitPrice = Number(r.unit_price ?? r.price ?? (med ? med.selling_price : 0)) || 0;
+            if (!grouped[r.medicine_id]) {
+                grouped[r.medicine_id] = {
+                    medicine_id: r.medicine_id,
+                    quantity: 0,
+                    price: unitPrice,
+                    medicines: med,
+                    rawRows: []
                 };
-            });
-        return { ...order, sales_order_items: items };
+            }
+            grouped[r.medicine_id].quantity += r.quantity || 0;
+            grouped[r.medicine_id].rawRows.push(r);
+        });
+
+        return { ...order, sales_order_items: Object.values(grouped) };
     });
 
     renderCategoriesTable();
@@ -1820,24 +1831,25 @@ async function fetchAllData() {
     if (document.getElementById('importTableBody').children.length === 0) addImportRow();
 }
 
-// Hoàn kho đúng lô đã trừ (đơn cũ chưa có thông tin lô thì hoàn vào lô mới nhất)
+// Hoàn kho đúng lô đã trừ (dòng cũ không có batch_id thì hoàn vào lô mới nhất)
 async function restoreOrderStock(order) {
     for (const item of (order.sales_order_items || [])) {
-        let allocs = Array.isArray(item.batch_allocations) ? item.batch_allocations : [];
-        if (allocs.length === 0) {
-            const latest = globalBatches
-                .filter(b => b.medicine_id === item.medicine_id)
-                .sort((a, b) => new Date(b.imported_at) - new Date(a.imported_at))[0];
-            if (latest) allocs = [{ batch_id: latest.id, qty: item.quantity }];
-        }
-        for (const a of allocs) {
+        for (const r of (item.rawRows || [])) {
+            let batchId = r.batch_id;
+            if (!batchId) {
+                const latest = globalBatches
+                    .filter(b => b.medicine_id === r.medicine_id)
+                    .sort((a, b) => new Date(b.imported_at) - new Date(a.imported_at))[0];
+                if (!latest) continue;
+                batchId = latest.id;
+            }
             const { data: b, error: e1 } = await supabaseClient
-                .from('inventory_batches').select('quantity_remaining').eq('id', a.batch_id).single();
+                .from('inventory_batches').select('quantity_remaining').eq('id', batchId).single();
             if (e1) throw e1;
             const { error: e2 } = await supabaseClient
                 .from('inventory_batches')
-                .update({ quantity_remaining: (b.quantity_remaining || 0) + a.qty })
-                .eq('id', a.batch_id);
+                .update({ quantity_remaining: (b.quantity_remaining || 0) + (r.quantity || 0) })
+                .eq('id', batchId);
             if (e2) throw e2;
         }
     }
@@ -1921,13 +1933,14 @@ async function handleCompleteSale() {
 
         for (const item of itemsToSell) {
             const allocs = await deductStock(item.medicine_id, item.quantity);
-            const { error: itemErr } = await supabaseClient.from('sales_order_items').insert([{
+            const newRows = allocs.map(a => ({
                 order_id: orderId,
                 medicine_id: item.medicine_id,
-                quantity: item.quantity,
-                price: item.price,
-                batch_allocations: allocs
-            }]);
+                batch_id: a.batch_id,
+                quantity: a.qty,
+                unit_price: item.price
+            }));
+            const { error: itemErr } = await supabaseClient.from('sales_order_items').insert(newRows);
             if (itemErr) throw itemErr;
         }
 
