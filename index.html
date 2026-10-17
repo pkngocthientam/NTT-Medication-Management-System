@@ -59,7 +59,6 @@
 
         <!-- ================= TAB LỚN 1: BÁN THUỐC & BÁO CÁO ================= -->
         <div id="sectionSales" class="space-y-6">
-            <!-- Sub-tabs trong phần Bán thuốc -->
             <div class="flex bg-white rounded-lg shadow-sm border p-1 gap-2">
                 <button onclick="switchSalesSubTab('pos')" id="salesSubTabPos" class="flex-1 py-2.5 rounded-md font-semibold text-sm bg-blue-50 text-blue-700 shadow-sm transition">⚡ Lập Phiếu & Lịch Sử Bán</button>
                 <button onclick="switchSalesSubTab('report')" id="salesSubTabReport" class="flex-1 py-2.5 rounded-md font-semibold text-sm text-gray-600 hover:bg-gray-50 transition">📈 Báo Cáo Tổng Hợp Bán Thuốc Theo Ngày</button>
@@ -67,7 +66,7 @@
 
             <!-- Phân đoạn 1: Bán thuốc & Lịch sử -->
             <div id="salesSubSectionPos" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Cột trái: Lập phiếu bán siêu tốc -->
+                <!-- Cột trái: Lập phiếu bán -->
                 <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow border space-y-4">
                     <div class="flex justify-between items-center border-b pb-3">
                         <div>
@@ -101,9 +100,7 @@
                                     <th class="border p-2 text-center w-16">Xóa</th>
                                 </tr>
                             </thead>
-                            <tbody id="salesTableBody">
-                                <!-- Dynamic -->
-                            </tbody>
+                            <tbody id="salesTableBody"></tbody>
                         </table>
                     </div>
 
@@ -121,7 +118,7 @@
                     </button>
                 </div>
 
-                <!-- Cột phải: Lịch sử bán thuốc theo ngày -->
+                <!-- Cột phải: Lịch sử phiếu bán -->
                 <div class="bg-white p-6 rounded-lg shadow border space-y-4">
                     <div class="flex justify-between items-center border-b pb-2">
                         <h2 class="text-md font-bold text-gray-700">📜 Lịch Sử Phiếu Bán</h2>
@@ -133,7 +130,7 @@
                 </div>
             </div>
 
-            <!-- Phân đoạn 2: Báo cáo tổng hợp bán thuốc theo ngày -->
+            <!-- Phân đoạn 2: Báo cáo ngày -->
             <div id="salesSubSectionReport" class="hidden space-y-6 bg-white p-6 rounded-lg shadow border">
                 <div class="flex justify-between items-center border-b pb-4">
                     <div>
@@ -191,7 +188,6 @@
                         </div>
                     </div>
 
-                    <!-- Ô gõ tên Người lập báo cáo & Lưu vào CSDL -->
                     <div class="pt-6 border-t space-y-4">
                         <div class="max-w-md space-y-2">
                             <label class="block text-xs font-bold text-gray-700 uppercase">Người lập báo cáo (Bắt buộc để chấm công) <span class="text-red-500">*</span></label>
@@ -430,9 +426,7 @@
                             <th class="border border-black p-1.5 text-right w-28">Thành tiền (đ)</th>
                         </tr>
                     </thead>
-                    <tbody id="invItemsTableBody">
-                        <!-- Hiển thị danh sách thuốc -->
-                    </tbody>
+                    <tbody id="invItemsTableBody"></tbody>
                     <tfoot>
                         <tr class="font-bold bg-gray-50">
                             <td colspan="3" class="border border-black p-1.5">Tổng số khoản: <span id="invTotalCount">0</span></td>
@@ -462,7 +456,7 @@
 
             <div class="flex justify-end gap-3 pt-4 border-t font-sans">
                 <button onclick="document.getElementById('invoiceModal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-5 py-2 rounded-lg font-bold text-sm hover:bg-gray-400">Đóng</button>
-                <button onclick="window.print()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 shadow">🖨️ In Hóa Đơn Trực Tiếp</button>
+                <button onclick="printDirectInvoice()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 shadow">🖨️ In Hóa Đơn Trực Tiếp</button>
             </div>
         </div>
     </div>
@@ -648,6 +642,7 @@
             }
         }
 
+        // --- FETCH DỮ LIỆU & GHÉP MẢNG CHI TIẾT ---
         async function fetchAllData() {
             if (!supabaseClient) return;
             
@@ -666,12 +661,13 @@
             const { data: batchData } = await supabaseClient.from('inventory_batches').select('*');
             globalBatches = batchData || [];
 
-            // FETCH ĐƠN BÁN HÀNG & NỐI CHI TIẾT ĐỂ TRÁNH LỖI KHOÁ NGOẠI
+            // Tải danh sách đơn xuất bán
             const { data: salesData } = await supabaseClient
                 .from('sales_orders')
                 .select('*')
                 .order('created_at', { ascending: false });
             
+            // Tải chi tiết đơn xuất bán
             const { data: salesItemsData } = await supabaseClient
                 .from('sales_order_items')
                 .select('*');
@@ -1131,7 +1127,7 @@
             }).join('');
         }
 
-        // --- XEM & IN HÓA ĐƠN TRỰC TIẾP ---
+        // --- HÓA ĐƠN THUỐC ---
         function openInvoiceModal(orderId) {
             const order = globalSalesOrders.find(o => o.id === orderId);
             if (!order) return;
@@ -1148,7 +1144,9 @@
             const tbody = document.getElementById('invItemsTableBody');
             tbody.innerHTML = '';
 
+            let itemCount = 0;
             if (order.sales_order_items && order.sales_order_items.length > 0) {
+                itemCount = order.sales_order_items.length;
                 order.sales_order_items.forEach((item, index) => {
                     let medName = 'Thuốc';
                     let unit = 'Viên';
@@ -1161,34 +1159,84 @@
                         if (f) { medName = f.name; unit = f.unit; }
                     }
 
-                    const lineTotal = item.quantity * item.price;
+                    const lineTotal = item.quantity * (item.price || 0);
 
                     tbody.innerHTML += `
                         <tr>
-                            <td class="border border-black p-1 text-center">${index + 1}</td>
-                            <td class="border border-black p-1 font-bold">${medName}</td>
-                            <td class="border border-black p-1 text-center">${unit}</td>
-                            <td class="border border-black p-1 text-center font-bold">${item.quantity}</td>
-                            <td class="border border-black p-1 text-right">${(item.price || 0).toLocaleString('vi-VN')}</td>
-                            <td class="border border-black p-1 text-right font-bold">${lineTotal.toLocaleString('vi-VN')}</td>
+                            <td class="border border-black p-1.5 text-center">${index + 1}</td>
+                            <td class="border border-black p-1.5 font-bold">${medName}</td>
+                            <td class="border border-black p-1.5 text-center">${unit}</td>
+                            <td class="border border-black p-1.5 text-center font-bold">${item.quantity}</td>
+                            <td class="border border-black p-1.5 text-right">${(item.price || 0).toLocaleString('vi-VN')}</td>
+                            <td class="border border-black p-1.5 text-right font-bold">${lineTotal.toLocaleString('vi-VN')}</td>
                         </tr>
                     `;
                 });
             }
 
-            document.getElementById('invTotalCount').textContent = order.sales_order_items ? order.sales_order_items.length : 0;
+            document.getElementById('invTotalCount').textContent = itemCount;
             document.getElementById('invGrandTotal').textContent = (order.total_amount || 0).toLocaleString('vi-VN');
             document.getElementById('invWords').textContent = numberToVietnameseWords(order.total_amount || 0);
 
             document.getElementById('invoiceModal').classList.remove('hidden');
         }
 
-        function numberToVietnameseWords(number) {
-            if (number === 0) return 'Không đồng';
-            return number.toLocaleString('vi-VN') + ' đồng';
+        // CHUYỂN SỐ THÀNH CHỮ TIẾNG VIỆT
+        function numberToVietnameseWords(num) {
+            if (!num || num === 0) return 'Không đồng';
+            const units = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+            function readTriple(n) {
+                let tr = Math.floor(n / 100);
+                let ch = Math.floor((n % 100) / 10);
+                let dv = n % 10;
+                let res = '';
+                if (tr > 0 || n >= 100) res += units[tr] + ' trăm ';
+                if (ch > 1) res += units[ch] + ' mươi ';
+                else if (ch === 1) res += 'mười ';
+                else if (tr > 0 && dv > 0) res += 'lẻ ';
+                if (ch > 1 && dv === 1) res += 'mốt';
+                else if (ch > 0 && dv === 5) res += 'lăm';
+                else if (dv > 0) res += units[dv];
+                return res.trim();
+            }
+
+            let str = '';
+            let million = Math.floor(num / 1000000);
+            let thousand = Math.floor((num % 1000000) / 1000);
+            let unit = num % 1000;
+
+            if (million > 0) str += readTriple(million) + ' triệu ';
+            if (thousand > 0) str += readTriple(thousand) + ' nghìn ';
+            if (unit > 0) str += readTriple(unit);
+
+            str = str.trim();
+            return str.charAt(0).toUpperCase() + str.slice(1) + ' đồng';
         }
 
-        // --- BÁO CÁO TỔNG BÁN THUỐC THEO NGÀY (CẬP NHẬT CHUẨN) ---
+        // SỬA LỖI IN CHỈ LẤY NỘI DUNG HÓA ĐƠN
+        function printDirectInvoice() {
+            const invoiceContent = document.getElementById('printableInvoice').outerHTML;
+            const printWindow = window.open('', '_blank', 'width=800,height=900');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>In Hóa Đơn</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        body { background: white; font-family: sans-serif; padding: 20px; }
+                        @page { size: auto; margin: 10mm; }
+                    </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                    <div class="max-w-xl mx-auto">${invoiceContent}</div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        // --- BÁO CÁO NGÀY ---
         function renderDailyReport() {
             const dateVal = document.getElementById('reportDateInput').value;
             if (!dateVal) return;
@@ -1286,7 +1334,7 @@
 
             if (error) {
                 if (error.message.includes("Could not find the table")) {
-                    alert('Lỗi: Bảng "daily_reports" chưa được tạo trên Supabase!\nVui lòng vào Supabase SQL Editor và chạy câu lệnh tạo bảng theo hướng dẫn.');
+                    alert('Lỗi: Bảng "daily_reports" chưa được tạo trên Supabase!\nVui lòng vào Supabase SQL Editor và chạy câu lệnh tạo bảng.');
                 } else {
                     alert('Lưu báo cáo thất bại: ' + error.message);
                 }
@@ -1296,7 +1344,25 @@
         }
 
         function printDailyReport() {
-            window.print();
+            const reportContent = document.getElementById('printableReportArea').outerHTML;
+            const printWindow = window.open('', '_blank', 'width=900,height=900');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>In Báo Cáo Ngày</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        body { background: white; font-family: sans-serif; padding: 20px; }
+                        @page { size: auto; margin: 10mm; }
+                    </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                    <div class="max-w-3xl mx-auto">${reportContent}</div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
         }
 
         // ================= NHẬP & TỒN =================
@@ -1697,32 +1763,5 @@
             document.getElementById('cancelEditMedBtn').classList.add('hidden');
         }
     </script>
-
-    <!-- CSS CẤU HÌNH IN TRỰC TIẾP -->
-    <style>
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            #invoiceModal, #invoiceModal *, #printableReportArea, #printableReportArea * {
-                visibility: visible;
-            }
-            #invoiceModal {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                background: white;
-            }
-            #printableReportArea {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                border: none;
-                box-shadow: none;
-            }
-        }
-    </style>
 </body>
 </html>
