@@ -18,10 +18,6 @@
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Tên đăng nhập</label>
-                    <input type="text" id="loginUsername" placeholder="Nhập tài khoản..." class="border p-3 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                </div>
-                <div>
                     <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Mật khẩu</label>
                     <input type="password" id="loginPassword" placeholder="Nhập mật khẩu..." class="border p-3 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
@@ -163,7 +159,7 @@
                             <div class="text-2xl font-black text-green-700 mt-1" id="reportTotalRevenue">0 đ</div>
                         </div>
                         <div class="bg-purple-50 border border-purple-200 p-4 rounded-lg text-center">
-                            <div class="text-xs text-gray-500 uppercase font-bold"> Số loại thuốc đã bán </div>
+                            <div class="text-xs text-gray-500 uppercase font-bold">Số loại thuốc đã bán</div>
                             <div class="text-2xl font-black text-purple-700 mt-1" id="reportTotalQty">0</div>
                         </div>
                     </div>
@@ -495,29 +491,23 @@
 
         // --- AUTH ---
         async function handleLogin() {
-            const usernameInput = document.getElementById('loginUsername').value.trim();
             const passwordInput = document.getElementById('loginPassword').value.trim();
             const errorEl = document.getElementById('loginError');
 
-            if (!usernameInput || !passwordInput) {
-                errorEl.textContent = 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!';
+            if (!passwordInput) {
+                errorEl.textContent = 'Vui lòng nhập mật khẩu!';
                 return;
             }
 
-            const { data, error } = await supabaseClient
-                .from('staff_accounts')
-                .select('*')
-                .eq('username', usernameInput)
-                .eq('password', passwordInput)
-                .single();
-
-            if (error || !data) {
-                errorEl.textContent = 'Sai tên đăng nhập hoặc mật khẩu!';
-            } else {
-                currentStaff = data;
-                localStorage.setItem('clinic_current_staff', JSON.stringify(data));
-                showMainApp();
+            if (passwordInput !== '132caugiay') {
+                errorEl.textContent = 'Sai mật khẩu!';
+                return;
             }
+
+            errorEl.textContent = '';
+            currentStaff = { fullname: 'Quản trị viên' };
+            localStorage.setItem('clinic_current_staff', JSON.stringify(currentStaff));
+            showMainApp();
         }
 
         function handleLogout() {
@@ -525,7 +515,6 @@
             currentStaff = null;
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('loginUsername').value = '';
             document.getElementById('loginPassword').value = '';
             document.getElementById('loginError').textContent = '';
         }
@@ -1315,6 +1304,7 @@
             document.getElementById('reportTotalOrders').textContent = totalOrders;
             document.getElementById('reportTotalRevenue').textContent = totalRevenue.toLocaleString('vi-VN') + ' đ';
             document.getElementById('reportTotalQty').textContent = Object.keys(medSummaryMap).length;
+
             const tbody = document.getElementById('reportMedicinesTableBody');
             const summaryArr = Object.values(medSummaryMap);
 
