@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phần Mềm Quản Lý Kho & Bán Thuốc Phòng Khám</title>
+    <title>Phần Mềm Quản Lý Kho & Bán Thuốc - Phòng Khám Tai Mũi Họng Ngọc Thiên Tâm</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -13,8 +13,8 @@
     <div id="loginScreen" class="fixed inset-0 bg-blue-900 bg-opacity-90 flex items-center justify-center z-50 p-4">
         <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
             <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-blue-600">🏥 Phòng Khám Đa Khoa</h2>
-                <p class="text-sm text-gray-500 mt-1">Vui lòng đăng nhập để tiếp tục</p>
+                <h2 class="text-xl font-bold text-blue-600 uppercase">🏥 Phòng Khám Tai Mũi Họng<br><span class="text-2xl text-blue-800">Ngọc Thiên Tâm</span></h2>
+                <p class="text-sm text-gray-500 mt-2">Vui lòng đăng nhập để tiếp tục</p>
             </div>
             <div class="space-y-4">
                 <div>
@@ -37,7 +37,7 @@
     <div id="mainApp" class="container mx-auto p-4 max-w-7xl hidden">
         <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border">
             <div>
-                <h1 class="text-xl font-bold text-blue-600">🏥 Quản Lý Kho & Bán Thuốc Phòng Khám</h1>
+                <h1 class="text-xl font-bold text-blue-600">🏥 Phòng Khám Tai Mũi Họng Ngọc Thiên Tâm</h1>
                 <p class="text-xs text-gray-500">Xin chào, <span id="currentStaffName" class="font-bold text-gray-700"></span> (<span id="connectionStatus" class="text-green-600 font-semibold">Đã kết nối CSDL</span>)</p>
             </div>
             <button onclick="handleLogout()" class="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-100 transition">
@@ -151,7 +151,7 @@
 
                 <div id="printableReportArea" class="p-6 bg-white border rounded-xl space-y-6">
                     <div class="text-center space-y-1">
-                        <h3 class="text-xs font-semibold text-gray-600 uppercase">Sở Y Tế - Phòng Khám Đa Khoa</h3>
+                        <h3 class="text-xs font-semibold text-gray-600 uppercase">Phòng Khám Tai Mũi Họng Ngọc Thiên Tâm</h3>
                         <h2 class="text-xl font-bold text-gray-900 uppercase">BÁO CÁO TỔNG HỢP BÁN THUỐC TRONG NGÀY</h2>
                         <p class="text-sm font-medium text-gray-600" id="reportDateDisplay">Ngày: --/--/----</p>
                     </div>
@@ -405,13 +405,13 @@
         </div>
     </div>
 
-    <!-- MODAL XEM TRƯỚC HÓA ĐƠN (Đã cập nhật theo yêu cầu) -->
+    <!-- MODAL XEM TRƯỚC HÓA ĐƠN -->
     <div id="invoiceModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-8 space-y-6 max-h-[90vh] overflow-y-auto">
             <div id="printableInvoice" class="bg-white p-6 space-y-4 border rounded font-serif text-sm">
                 <div class="text-center">
-                    <p class="text-xs font-sans">Sở Y Tế - Phòng Khám Đa Khoa</p>
-                    <h1 class="text-xl font-black mt-2 tracking-wide uppercase font-sans">HÓA ĐƠN</h1>
+                    <p class="text-xs font-sans font-semibold text-gray-600">Phòng khám Tai Mũi Họng Ngọc Thiên Tâm</p>
+                    <h1 class="text-2xl font-black mt-2 tracking-wide uppercase font-sans">HÓA ĐƠN</h1>
                 </div>
 
                 <div class="flex justify-between text-xs py-2 font-sans border-b">
@@ -666,11 +666,33 @@
             const { data: batchData } = await supabaseClient.from('inventory_batches').select('*');
             globalBatches = batchData || [];
 
+            // FETCH ĐƠN BÁN HÀNG & NỐI CHI TIẾT ĐỂ TRÁNH LỖI KHOÁ NGOẠI
             const { data: salesData } = await supabaseClient
                 .from('sales_orders')
-                .select('*, sales_order_items(*, medicines(name, unit, selling_price))')
+                .select('*')
                 .order('created_at', { ascending: false });
-            globalSalesOrders = salesData || [];
+            
+            const { data: salesItemsData } = await supabaseClient
+                .from('sales_order_items')
+                .select('*');
+
+            if (salesData && salesItemsData) {
+                globalSalesOrders = salesData.map(order => {
+                    const items = salesItemsData.filter(item => item.order_id === order.id).map(item => {
+                        const med = globalMedicines.find(m => m.id === item.medicine_id);
+                        return {
+                            ...item,
+                            medicines: med || null
+                        };
+                    });
+                    return {
+                        ...order,
+                        sales_order_items: items
+                    };
+                });
+            } else {
+                globalSalesOrders = salesData || [];
+            }
 
             renderCategoriesTable();
             renderCategoryDropdowns();
@@ -1000,7 +1022,7 @@
             }
 
             resetSalesForm();
-            fetchAllData();
+            await fetchAllData();
         }
 
         function resetSalesForm() {
@@ -1079,7 +1101,7 @@
                 const dateStr = new Date(o.created_at).toLocaleDateString('vi-VN');
                 const timeStr = new Date(o.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                 
-                let itemsSummary = '';
+                let itemsSummary = '<span class="text-gray-400">Không có dữ liệu thuốc</span>';
                 if (o.sales_order_items && o.sales_order_items.length > 0) {
                     itemsSummary = o.sales_order_items.map(i => {
                         const name = i.medicines ? i.medicines.name : 'Thuốc';
@@ -1191,11 +1213,11 @@
                         totalQty += i.quantity;
                         const medId = i.medicine_id;
                         let medName = 'Thuốc không rõ';
-                        let unit = '';
+                        let unit = 'Viên';
 
                         if (i.medicines) {
                             medName = i.medicines.name;
-                            unit = i.medicines.unit;
+                            unit = i.medicines.unit || 'Viên';
                         } else {
                             const found = globalMedicines.find(m => m.id === medId);
                             if (found) {
@@ -1263,7 +1285,11 @@
                 }], { onConflict: 'report_date' });
 
             if (error) {
-                alert('Lưu báo cáo thất bại: ' + error.message);
+                if (error.message.includes("Could not find the table")) {
+                    alert('Lỗi: Bảng "daily_reports" chưa được tạo trên Supabase!\nVui lòng vào Supabase SQL Editor và chạy câu lệnh tạo bảng theo hướng dẫn.');
+                } else {
+                    alert('Lưu báo cáo thất bại: ' + error.message);
+                }
             } else {
                 alert(`Đã lưu báo cáo ngày ${reportDate} thành công! Người lập: ${reporterName}`);
             }
