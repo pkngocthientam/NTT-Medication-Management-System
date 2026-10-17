@@ -547,47 +547,30 @@
 
             dropdown.innerHTML = matched.map((m, index) => {
                 const stock = globalBatches.filter(b => b.medicine_id === m.id).reduce((s, b) => s + (b.quantity_remaining || 0), 0);
-                return `<div class="p-2 hover:bg-blue-50 cursor-pointer text-xs border-b suggestion-item ${index === 0 ? 'bg-blue-50' : ''}" data-id="${m.id}" data-name="${m.name}" onclick="selectSaleMedicine('${rowId}', '${m.id}', '${m.name}')">
-                    <b>${m.name}</b> (${m.unit || ''}) - Tồn: <span class="text-blue-600 font-bold">${stock}</span>
+                const activeClass = index === 0 ? 'bg-blue-50 selected-sugg' : '';
+                return `<div onclick="selectSaleMedicine('${m.id}', '${m.name.replace(/'/g, "\\'")}', ${stock}, ${m.selling_price || 0}, '${rowId}')" 
+                    class="sugg-item p-2 hover:bg-blue-50 cursor-pointer text-xs border-b flex justify-between items-center ${activeClass}" 
+                    data-id="${m.id}" data-name="${m.name.replace(/'/g, "\\'")}" data-stock="${stock}" data-price="${m.selling_price || 0}">
+                    <span class="font-medium text-gray-800">${m.name} (${m.unit})</span>
+                    <span class="text-blue-600 font-bold">Tồn: ${stock} | ${(m.selling_price || 0).toLocaleString()}đ</span>
                 </div>`;
             }).join('');
-
             dropdown.classList.remove('hidden');
-        }
-
-        function selectSaleMedicine(rowId, medId, medName) {
-            const row = document.getElementById(rowId);
-            row.querySelector('.sale-med-input').value = medName;
-            row.querySelector('.sale-med-id').value = medId;
-            row.querySelector('.sale-suggestions').classList.add('hidden');
-
-            const stock = globalBatches.filter(b => b.medicine_id === medId).reduce((s, b) => s + (b.quantity_remaining || 0), 0);
-            row.querySelector('.stock-info-text').textContent = 'Tồn: ' + stock;
-
-            validateStockAndTotal(rowId);
-            row.querySelector('.sale-qty-input').focus();
-            row.querySelector('.sale-qty-input').select();
         }
 
         function handleInputKeydown(event, rowId) {
             const row = document.getElementById(rowId);
             const dropdown = row.querySelector('.sale-suggestions');
-            const items = dropdown.querySelectorAll('.suggestion-item');
+            const items = dropdown.querySelectorAll('.sugg-item');
 
-            if (dropdown.classList.contains('hidden') || items.length === 0) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    row.querySelector('.sale-qty-input').focus();
-                }
-                return;
-            }
+            if (dropdown.classList.contains('hidden') || items.length === 0) return;
 
             let currentIndex = Array.from(items).findIndex(i => i.classList.contains('bg-blue-50'));
 
             if (event.key === 'ArrowDown') {
                 event.preventDefault();
                 if (currentIndex < items.length - 1) {
-                    if (currentIndex >= 0) items[currentIndex].classList.remove('bg-blue-50');
+                    items[currentIndex].classList.remove('bg-blue-50');
                     items[currentIndex + 1].classList.add('bg-blue-50');
                     items[currentIndex + 1].scrollIntoView({ block: 'nearest' });
                 }
@@ -600,365 +583,170 @@
                 }
             } else if (event.key === 'Enter') {
                 event.preventDefault();
-                if (currentIndex >= 0 && items[currentIndex]) {
-                    items[currentIndex].click();
-                } else if (items.length > 0) {
-                    items[0].click();
+                const activeItem = dropdown.querySelector('.sugg-item.bg-blue-50') || items[0];
+                if (activeItem) {
+                    selectSaleMedicine(
+                        activeItem.dataset.id,
+                        activeItem.dataset.name,
+                        parseInt(activeItem.dataset.stock),
+                        parseFloat(activeItem.dataset.price),
+                        rowId
+                    );
                 }
             }
         }
 
-        function handleQtyKeydown(event, rowId) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                const tbody = document.getElementById('salesTableBody');
-                const rows = Array.from(tbody.children);
-                const currentIndex = rows.findIndex(r => r.id === rowId);
+        function selectSaleMedicine(id, name, stock, price, rowId) {
+            const row = document.getElementById(rowId);
+            row.querySelector('.sale-med-input').value = name;
+            row.querySelector('.sale-med-id').value = id;
+            row.dataset.price = price;
+            row.dataset.stock = stock;
+            row.querySelector('.stock-info-text').textContent = `Tồn: ${stock}`;
+            row.querySelector('.sale-suggestions').classList.add('hidden');
 
-                if (currentIndex === rows.length - 1) {
-                    addSaleRow();
-                } else {
-                    rows[currentIndex + 1].querySelector('.sale-med-input').focus();
-                }
-            }
+            validateStockAndTotal(rowId);
+            row.querySelector('.sale-qty-input').focus();
+            row.querySelector('.sale-qty-input').select();
         }
 
         function validateStockAndTotal(rowId) {
+            const row = document.getElementById(rowId);
+            const stock = parseInt(row.dataset.stock) || 0;
+            const qtyInput = row.querySelector('.sale-qty-input');
+            const qty = parseInt(qtyInput.value) || 0;
+
+            if (qty > stock) {
+                qtyInput.classList.add('border-red-500', 'bg-red-50', 'text-red-600');
+                row.dataset.isOverStock = "true";
+            } else {
+                qtyInput.classList.remove('border-red-500', 'bg-red-50', 'text-red-600');
+                row.dataset.isOverStock = "false";
+            }
+
             checkStockWarnings();
             calculateGrandTotal();
         }
 
         function checkStockWarnings() {
             const rows = document.querySelectorAll('#salesTableBody tr');
-            let hasWarning = false;
-
-            rows.forEach(row => {
-                const medId = row.querySelector('.sale-med-id').value;
-                const qtyInput = row.querySelector('.sale-qty-input');
-                if (!medId) return;
-
-                const qty = parseInt(qtyInput.value) || 0;
-                const stock = globalBatches.filter(b => b.medicine_id === medId).reduce((s, b) => s + (b.quantity_remaining || 0), 0);
-
-                if (qty > stock) {
-                    hasWarning = true;
-                    qtyInput.classList.add('border-red-500', 'bg-red-50');
-                } else {
-                    qtyInput.classList.remove('border-red-500', 'bg-red-50');
-                }
+            let hasOver = false;
+            rows.forEach(r => {
+                if (r.dataset.isOverStock === "true") hasOver = true;
             });
 
             const warningEl = document.getElementById('stockWarningContainer');
-            if (hasWarning) {
+            const btnEl = document.getElementById('completeSaleBtn');
+            if (hasOver) {
                 warningEl.classList.remove('hidden');
+                btnEl.disabled = true;
+                btnEl.className = 'w-full bg-gray-400 text-white py-3 rounded-lg font-bold text-base cursor-not-allowed shadow-none';
             } else {
                 warningEl.classList.add('hidden');
+                btnEl.disabled = false;
+                btnEl.className = 'w-full bg-green-600 text-white py-3 rounded-lg font-bold text-base hover:bg-green-700 shadow-md transition';
+            }
+        }
+
+        function handleQtyKeydown(event, rowId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const rows = document.querySelectorAll('#salesTableBody tr');
+                if (rows[rows.length - 1].id === rowId) {
+                    addSaleRow();
+                } else {
+                    const nextRow = rows[Array.from(rows).findIndex(r => r.id === rowId) + 1];
+                    if (nextRow) nextRow.querySelector('.sale-med-input').focus();
+                }
             }
         }
 
         function calculateGrandTotal() {
-            // Tạm tính tổng đơn dựa trên số lượng & giá bán lẻ (nếu có)
-            let total = 0;
             const rows = document.querySelectorAll('#salesTableBody tr');
+            let grandTotal = 0;
             rows.forEach(row => {
-                const medId = row.querySelector('.sale-med-id').value;
                 const qty = parseInt(row.querySelector('.sale-qty-input').value) || 0;
-                if (medId) {
-                    const med = globalMedicines.find(m => m.id === medId);
-                    const price = med ? (med.retail_price || 0) : 0;
-                    total += qty * price;
-                }
+                const price = parseFloat(row.dataset.price) || 0;
+                grandTotal += qty * price;
             });
-            document.getElementById('grandTotalText').textContent = total.toLocaleString() + ' đ';
-            return total;
+            document.getElementById('grandTotalText').textContent = grandTotal.toLocaleString('vi-VN') + ' đ';
         }
 
         async function handleCompleteSale() {
+            const patient_name = document.getElementById('patientNameInput').value.trim() || 'Khách lẻ';
             const rows = document.querySelectorAll('#salesTableBody tr');
-            const itemsToSave = [];
 
+            if (rows.length === 0) { alert('Chưa có thuốc trong đơn hàng!'); return; }
+
+            let itemsToSell = [];
             for (let row of rows) {
-                const medId = row.querySelector('.sale-med-id').value;
-                const qty = parseInt(row.querySelector('.sale-qty-input').value) || 0;
-                if (!medId || qty <= 0) continue;
+                const medicine_id = row.querySelector('.sale-med-id').value;
+                const quantity = parseInt(row.querySelector('.sale-qty-input').value);
+                const price = parseFloat(row.dataset.price) || 0;
 
-                itemsToSave.push({ medicine_id: medId, quantity: qty });
+                if (!medicine_id || isNaN(quantity) || quantity <= 0) {
+                    alert('Vui lòng chọn thuốc hợp lệ và nhập số lượng!');
+                    return;
+                }
+
+                const medBatches = globalBatches.filter(b => b.medicine_id === medicine_id);
+                itemsToSell.push({ medicine_id, quantity, price, medBatches });
             }
 
-            if (itemsToSave.length === 0) {
-                alert('Vui lòng chọn ít nhất một thuốc hợp lệ để bán!');
-                return;
-            }
+            const total_amount = itemsToSell.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+            const orderCode = document.getElementById('autoOrderCode').textContent.replace('Mã phiếu: ', '');
 
-            const orderCode = document.getElementById('autoOrderCode').textContent.replace('Mã phiếu: ', '').trim();
-            const patientName = document.getElementById('patientNameInput').value.trim() || 'Khách lẻ';
-            const finalAmount = calculateGrandTotal();
-
-            // 1. Tạo đơn hàng sales_orders
-            const { data: orderData, error: orderError } = await supabaseClient
+            // 1. Lưu Đơn Bán
+            const { data: orderData, error: orderErr } = await supabaseClient
                 .from('sales_orders')
                 .insert([{
                     order_code: orderCode,
-                    patient_name: patientName,
-                    staff_id: currentStaff.id,
-                    final_amount: finalAmount, // Đã fix truyền đầy đủ giá trị
-                    created_at: new Date().toISOString()
+                    patient_name,
+                    total_amount,
+                    staff_name: currentStaff ? currentStaff.fullname : 'Nhân viên'
                 }])
-                .select()
+                .select('id')
                 .single();
 
-            if (orderError) {
-                alert('Lỗi tạo đơn bán: ' + orderError.message);
-                return;
-            }
+            if (orderErr) { alert('Lỗi tạo đơn bán: ' + orderErr.message); return; }
 
-            // 2. Thêm các chi tiết đơn sales_order_items & trừ tồn kho lô
-            for (let item of itemsToSave) {
+            const orderId = orderData.id;
+
+            // 2. Lưu chi tiết & Trừ kho FIFO
+            for (let item of itemsToSell) {
                 await supabaseClient.from('sales_order_items').insert([{
-                    order_id: orderData.id,
+                    order_id: orderId,
                     medicine_id: item.medicine_id,
                     quantity: item.quantity,
-                    price: 0
+                    price: item.price
                 }]);
 
-                // Trừ tồn kho từ các lô theo FIFO (lô cũ nhất trước)
-                let remainingQtyToSubtract = item.quantity;
-                const batches = globalBatches
-                    .filter(b => b.medicine_id === item.medicine_id && (b.quantity_remaining || 0) > 0)
-                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                let remainingToDeduct = item.quantity;
+                const sortedBatches = item.medBatches.sort((a, b) => new Date(a.imported_at) - new Date(b.imported_at));
 
-                for (let batch of batches) {
-                    if (remainingQtyToSubtract <= 0) break;
-                    const subtract = Math.min(batch.quantity_remaining, remainingQtyToSubtract);
-                    const newQty = batch.quantity_remaining - subtract;
+                for (let batch of sortedBatches) {
+                    if (remainingToDeduct <= 0) break;
+                    if (batch.quantity_remaining <= 0) continue;
 
-                    await supabaseClient
-                        .from('inventory_batches')
-                        .update({ quantity_remaining: newQty })
-                        .eq('id', batch.id);
-
-                    batch.quantity_remaining = newQty;
-                    remainingQtyToSubtract -= subtract;
+                    if (batch.quantity_remaining >= remainingToDeduct) {
+                        const newStock = batch.quantity_remaining - remainingToDeduct;
+                        await supabaseClient.from('inventory_batches').update({ quantity_remaining: newStock }).eq('id', batch.id);
+                        remainingToDeduct = 0;
+                    } else {
+                        remainingToDeduct -= batch.quantity_remaining;
+                        await supabaseClient.from('inventory_batches').update({ quantity_remaining: 0 }).eq('id', batch.id);
+                    }
                 }
             }
 
-            alert('✅ Hoàn thành bán hàng thành công!');
+            alert('Bán thuốc thành công & Đã trừ tồn kho!');
+            
             document.getElementById('patientNameInput').value = '';
             document.getElementById('salesTableBody').innerHTML = '';
             generateNewOrderCode();
             addSaleRow();
+            calculateGrandTotal();
             fetchAllData();
-        }
-
-        // --- CÁC HÀM QUẢN LÝ DANH MỤC, KHO & LỊCH SỬ ---
-        async function handleSaveCategory() {
-            const name = document.getElementById('groupNameInput').value.trim();
-            if (!name) return alert('Vui lòng nhập tên nhóm thuốc!');
-            const { error } = await supabaseClient.from('medicine_categories').insert([{ name }]);
-            if (error) alert('Lỗi: ' + error.message);
-            else {
-                document.getElementById('groupNameInput').value = '';
-                fetchAllData();
-            }
-        }
-
-        async function handleSaveMedicine() {
-            const category_id = document.getElementById('medCategorySelect').value;
-            const code = document.getElementById('medCodeInput').value.trim();
-            const name = document.getElementById('medNameInput').value.trim();
-            const active_ingredient = document.getElementById('medIngredientInput').value.trim();
-            const unit = document.getElementById('medUnitInput').value.trim();
-
-            if (!name || !unit) return alert('Vui lòng nhập Tên thuốc và Đơn vị tính!');
-
-            const { error } = await supabaseClient.from('medicines').insert([{ category_id: category_id || null, code, name, active_ingredient, unit }]);
-            if (error) alert('Lỗi: ' + error.message);
-            else {
-                resetMedicineForm();
-                fetchAllData();
-            }
-        }
-
-        function resetMedicineForm() {
-            document.getElementById('medCodeInput').value = '';
-            document.getElementById('medNameInput').value = '';
-            document.getElementById('medIngredientInput').value = '';
-            document.getElementById('medUnitInput').value = '';
-            document.getElementById('medCategorySelect').value = '';
-        }
-
-        function renderCategoriesTable() {
-            const tbody = document.getElementById('categoriesTableBody');
-            if (globalCategories.length === 0) {
-                tbody.innerHTML = '<tr><td class="p-3 text-center text-gray-400">Chưa có nhóm thuốc nào</td></tr>';
-                return;
-            }
-            tbody.innerHTML = globalCategories.map(c => `<tr class="border-b"><td class="p-3">${c.name}</td></tr>`).join('');
-        }
-
-        function renderCategoryDropdowns() {
-            const select = document.getElementById('medCategorySelect');
-            select.innerHTML = '<option value="">-- Chọn nhóm thuốc --</option>' + globalCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        }
-
-        function renderMedicinesTable() {
-            const tbody = document.getElementById('medicinesTableBody');
-            if (globalMedicines.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">Chưa có thuốc nào được khai báo</td></tr>';
-                return;
-            }
-            tbody.innerHTML = globalMedicines.map(m => `
-                <tr class="border-b">
-                    <td class="p-2.5 font-mono text-xs">${m.code || '--'}</td>
-                    <td class="p-2.5 font-bold">${m.name}</td>
-                    <td class="p-2.5 text-gray-600">${m.medicine_categories?.name || '--'}</td>
-                    <td class="p-2.5 text-gray-600">${m.active_ingredient || '--'}</td>
-                    <td class="p-2.5 text-center">${m.unit}</td>
-                    <td class="p-2.5 text-center">
-                        <button onclick="deleteMedicine('${m.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold">Xóa</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function deleteMedicine(id) {
-            if (confirm('Bạn có chắc chắn muốn xóa thuốc này?')) {
-                await supabaseClient.from('medicines').delete().eq('id', id);
-                fetchAllData();
-            }
-        }
-
-        function renderInventoryTable() {
-            const tbody = document.getElementById('inventoryTableBody');
-            const keyword = (document.getElementById('searchInventoryInput')?.value || '').toLowerCase();
-            const filtered = globalMedicines.filter(m => m.name.toLowerCase().includes(keyword));
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Không tìm thấy thuốc tồn kho</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = filtered.map(m => {
-                const batches = globalBatches.filter(b => b.medicine_id === m.id);
-                const totalStock = batches.reduce((s, b) => s + (b.quantity_remaining || 0), 0);
-                const batchDetails = batches.map(b => `<span class="inline-block bg-gray-100 border px-1.5 py-0.5 rounded mr-1 mb-1 text-xs">Lô ${b.batch_number || '--'}: <b>${b.quantity_remaining}</b> (HSD: ${b.expiry_date || '--'})</span>`).join('');
-
-                return `
-                    <tr class="border-b">
-                        <td class="p-3 font-mono text-xs">${m.code || '--'}</td>
-                        <td class="p-3 font-bold">${m.name}</td>
-                        <td class="p-3 text-gray-600">${m.active_ingredient || '--'}</td>
-                        <td class="p-3 text-center">${m.unit}</td>
-                        <td class="p-3 text-right">${(m.retail_price || 0).toLocaleString()} đ</td>
-                        <td class="p-3 text-right font-bold text-blue-600">${totalStock} ${m.unit}</td>
-                        <td class="p-3">${batchDetails || '<span class="text-gray-400 text-xs">Chưa có lô</span>'}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function addImportRow() {
-            const tbody = document.getElementById('importTableBody');
-            const tr = document.createElement('tr');
-            tr.className = 'border-b';
-            tr.innerHTML = `
-                <td class="border p-2">
-                    <select class="border p-1.5 rounded w-full import-med-select text-sm">
-                        <option value="">-- Chọn thuốc --</option>
-                        ${globalMedicines.map(m => `<option value="${m.id}">${m.name} (${m.unit})</option>`).join('')}
-                    </select>
-                </td>
-                <td class="border p-2 text-center">
-                    <input type="text" placeholder="MMYY" class="border p-1.5 rounded w-28 import-exp-input text-center text-sm font-mono">
-                </td>
-                <td class="border p-2 text-center">
-                    <input type="number" value="1" min="1" class="border p-1.5 rounded w-20 import-qty-input text-center text-sm font-semibold">
-                </td>
-                <td class="border p-2 text-right">
-                    <input type="number" value="0" min="0" class="border p-1.5 rounded w-full import-price-input text-right text-sm">
-                </td>
-                <td class="border p-2 text-center">
-                    <button onclick="this.closest('tr').remove()" class="text-red-500 font-bold hover:text-red-700">✕</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        }
-
-        async function handleSaveReceipt() {
-            const receiptDate = document.getElementById('receiptDate').value;
-            const note = document.getElementById('receiptNote').value.trim();
-            const rows = document.querySelectorAll('#importTableBody tr');
-            const items = [];
-
-            for (let row of rows) {
-                const medicine_id = row.querySelector('.import-med-select').value;
-                const expiry_date = row.querySelector('.import-exp-input').value.trim();
-                const quantity = parseInt(row.querySelector('.import-qty-input').value) || 0;
-                const import_price = parseFloat(row.querySelector('.import-price-input').value) || 0;
-
-                if (!medicine_id || quantity <= 0) continue;
-                items.push({ medicine_id, expiry_date, quantity, import_price });
-            }
-
-            if (items.length === 0) return alert('Vui lòng thêm ít nhất một dòng thuốc nhập hợp lệ!');
-
-            // 1. Tạo phiếu nhập import_receipts
-            const { data: receiptData, error } = await supabaseClient
-                .from('import_receipts')
-                .insert([{ import_date: receiptDate, note, staff_id: currentStaff.id }])
-                .select()
-                .single();
-
-            if (error) return alert('Lỗi tạo phiếu nhập: ' + error.message);
-
-            // 2. Thêm lô hàng inventory_batches
-            for (let item of items) {
-                await supabaseClient.from('inventory_batches').insert([{
-                    receipt_id: receiptData.id,
-                    medicine_id: item.medicine_id,
-                    batch_number: receiptDate,
-                    expiry_date: item.expiry_date,
-                    quantity_initial: item.quantity,
-                    quantity_remaining: item.quantity,
-                    import_price: item.import_price
-                }]);
-            }
-
-            alert('✅ Lưu phiếu nhập kho thành công!');
-            document.getElementById('receiptNote').value = '';
-            document.getElementById('importTableBody').innerHTML = '';
-            addImportRow();
-            fetchAllData();
-        }
-
-        function renderReceiptsHistoryTable() {
-            const tbody = document.getElementById('receiptsTableBody');
-            if (globalReceipts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">Chưa có lịch sử nhập kho</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = globalReceipts.map(r => {
-                const batchList = (r.inventory_batches || []).map(b => `<div class="text-xs text-gray-700">• <b>${b.medicines?.name || 'Thuốc'}</b>: ${b.quantity_initial} ${b.medicines?.unit || ''} (HSD: ${b.expiry_date || '--'})</div>`).join('');
-                return `
-                    <tr class="border-b">
-                        <td class="p-3 font-semibold text-xs">${r.import_date}</td>
-                        <td class="p-3 text-gray-600">${r.note || '--'}</td>
-                        <td class="p-3">${batchList}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="deleteReceipt('${r.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold">Xóa phiếu</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        async function deleteReceipt(id) {
-            if (confirm('Xóa phiếu nhập sẽ xóa cả các lô hàng liên quan?')) {
-                await supabaseClient.from('inventory_batches').delete().eq('receipt_id', id);
-                await supabaseClient.from('import_receipts').delete().eq('id', id);
-                fetchAllData();
-            }
         }
 
         function renderSalesHistory() {
@@ -968,19 +756,357 @@
                 return;
             }
 
-            container.innerHTML = globalSalesOrders.map(order => {
-                const itemsHtml = (order.sales_order_items || []).map(item => `<div class="text-xs text-gray-600">- ${item.medicines?.name || 'Thuốc'}: <b>${item.quantity}</b> ${item.medicines?.unit || ''}</div>`).join('');
+            container.innerHTML = globalSalesOrders.map(o => {
+                const dateStr = new Date(o.created_at).toLocaleDateString('vi-VN');
+                const timeStr = new Date(o.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                
+                let itemsSummary = '';
+                if (o.sales_order_items && o.sales_order_items.length > 0) {
+                    itemsSummary = o.sales_order_items.map(i => {
+                        const name = i.medicines ? i.medicines.name : 'Thuốc';
+                        return `• ${name}: ${i.quantity} ${i.medicines ? i.medicines.unit : ''}`;
+                    }).join('<br>');
+                }
+
                 return `
-                    <div class="border rounded-lg p-3 bg-gray-50 space-y-1 text-xs">
-                        <div class="flex justify-between font-bold text-blue-700">
-                            <span>${order.order_code} (${order.patient_name})</span>
-                            <span>${(order.final_amount || 0).toLocaleString()} đ</span>
+                    <div class="border rounded-lg p-3 bg-gray-50 text-xs space-y-1">
+                        <div class="flex justify-between font-bold text-gray-800">
+                            <span>🎫 ${o.order_code || 'PB'} | 👤 ${o.patient_name}</span>
+                            <span class="text-blue-600 font-bold">${(o.total_amount || 0).toLocaleString('vi-VN')} đ</span>
                         </div>
-                        <div class="text-gray-400 text-[11px]">${new Date(order.created_at).toLocaleString()}</div>
-                        <div class="border-t pt-1 mt-1 space-y-0.5">${itemsHtml}</div>
+                        <div class="text-gray-500">📅 ${dateStr} lúc ${timeStr} | NV: ${o.staff_name || 'N/A'}</div>
+                        <div class="text-gray-700 bg-white p-2 rounded border mt-1">
+                            ${itemsSummary}
+                        </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // ================= CÁC HÀM QUẢN LÝ NHẬP KHO & KHAI BÁO =================
+        function addImportRow(data = null) {
+            const tbody = document.getElementById('importTableBody');
+            const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
+            
+            let optionsHtml = '<option value="">-- Chọn tên thuốc --</option>';
+            globalMedicines.forEach(m => {
+                const groupName = m.medicine_categories ? `[${m.medicine_categories.name}] ` : '';
+                const ingredientInfo = m.active_ingredient ? ` (${m.active_ingredient})` : '';
+                const selected = data && data.medicine_id === m.id ? 'selected' : '';
+                optionsHtml += `<option value="${m.id}" ${selected}>${groupName}${m.name}${ingredientInfo} - ĐVT: ${m.unit}</option>`;
+            });
+
+            const tr = document.createElement('tr');
+            tr.id = rowId;
+            tr.innerHTML = `
+                <td class="border p-2">
+                    <select class="border p-1.5 rounded w-full med-select text-sm" onchange="onSelectMedicineForImport(this, '${rowId}')">${optionsHtml}</select>
+                </td>
+                <td class="border p-2 text-center">
+                    <input type="text" placeholder="VD: 0926" maxlength="4" value="${data ? data.expiry_date : ''}" class="border p-1.5 rounded w-full expiry-input text-center text-sm font-mono">
+                </td>
+                <td class="border p-2">
+                    <input type="number" placeholder="SL" value="${data ? data.quantity_imported : 1}" class="border p-1.5 rounded w-full qty-input text-center text-sm">
+                </td>
+                <td class="border p-2">
+                    <input type="number" placeholder="Giá nhập" value="${data ? data.import_price : ''}" class="border p-1.5 rounded w-full price-input text-right text-sm">
+                </td>
+                <td class="border p-2 text-center">
+                    <button onclick="document.getElementById('${rowId}').remove()" class="text-red-500 font-bold hover:text-red-700">✕</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        async function onSelectMedicineForImport(selectEl, rowId) {
+            const medicineId = selectEl.value;
+            if (!medicineId) return;
+
+            const row = document.getElementById(rowId);
+            const priceInput = row.querySelector('.price-input');
+            if (priceInput.value) return;
+
+            const { data } = await supabaseClient
+                .from('inventory_batches')
+                .select('import_price')
+                .eq('medicine_id', medicineId)
+                .order('imported_at', { ascending: false })
+                .limit(1);
+
+            if (data && data.length > 0) {
+                priceInput.value = data[0].import_price;
+            }
+        }
+
+        async function handleSaveReceipt() {
+            const editingId = document.getElementById('editingReceiptId').value;
+            const import_date = document.getElementById('receiptDate').value;
+            const note = document.getElementById('receiptNote').value.trim();
+
+            if (!import_date) { alert('Vui lòng chọn ngày nhập kho!'); return; }
+
+            const rows = document.querySelectorAll('#importTableBody tr');
+            if (rows.length === 0) { alert('Chưa có dòng thuốc nào trong phiếu!'); return; }
+
+            let batchList = [];
+            for (let row of rows) {
+                const medicine_id = row.querySelector('.med-select').value;
+                const expiry_date = row.querySelector('.expiry-input').value.trim();
+                const quantity_imported = parseInt(row.querySelector('.qty-input').value);
+                const import_price = parseFloat(row.querySelector('.price-input').value) || 0;
+
+                if (!medicine_id || !expiry_date || isNaN(quantity_imported)) {
+                    alert('Vui lòng điền đầy đủ thông tin!');
+                    return;
+                }
+
+                batchList.push({
+                    medicine_id,
+                    batch_number: import_date,
+                    expiry_date,
+                    quantity_imported,
+                    quantity_remaining: quantity_imported,
+                    import_price
+                });
+            }
+
+            if (editingId) {
+                const { error: updateErr } = await supabaseClient.from('import_receipts').update({ import_date, note }).eq('id', editingId);
+                if (updateErr) { alert('Lỗi cập nhật phiếu: ' + updateErr.message); return; }
+
+                await supabaseClient.from('inventory_batches').delete().eq('receipt_id', editingId);
+                batchList.forEach(b => b.receipt_id = editingId);
+                await supabaseClient.from('inventory_batches').insert(batchList);
+                alert('Cập nhật phiếu nhập kho thành công!');
+            } else {
+                const { data: receiptData, error: insertErr } = await supabaseClient
+                    .from('import_receipts')
+                    .insert([{ 
+                        import_date, 
+                        note,
+                        staff_name: currentStaff ? currentStaff.fullname : 'Quản trị viên'
+                    }])
+                    .select('id')
+                    .single();
+
+                if (insertErr) { alert('Lỗi tạo phiếu nhập: ' + insertErr.message); return; }
+
+                const receiptId = receiptData.id;
+                batchList.forEach(b => b.receipt_id = receiptId);
+                await supabaseClient.from('inventory_batches').insert(batchList);
+                alert('Lập phiếu nhập kho thành công!');
+            }
+
+            resetImportForm();
+            fetchAllData();
+        }
+
+        function renderReceiptsHistoryTable() {
+            const tbody = document.getElementById('receiptsTableBody');
+            if (globalReceipts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">Chưa có phiếu nhập kho nào</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = globalReceipts.map(r => {
+                let itemsSummary = '<span class="text-gray-400">Chưa có thuốc</span>';
+                if (r.inventory_batches && r.inventory_batches.length > 0) {
+                    itemsSummary = r.inventory_batches.map(b => {
+                        const medName = b.medicines ? b.medicines.name : 'Thuốc không xác định';
+                        const unit = b.medicines ? b.medicines.unit : '';
+                        return `<span class="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-blue-200">${medName} - ${b.quantity_imported} ${unit} (HSD: ${b.expiry_date})</span>`;
+                    }).join('');
+                }
+
+                return `
+                    <tr class="border-b hover:bg-gray-50 align-top">
+                        <td class="p-3 font-semibold text-blue-600 whitespace-nowrap">${r.import_date}</td>
+                        <td class="p-3 text-gray-700">${r.note || '(Không có ghi chú)'}</td>
+                        <td class="p-3">${itemsSummary}</td>
+                        <td class="p-3 text-center whitespace-nowrap">
+                            <button onclick="editReceipt('${r.id}')" class="bg-yellow-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-yellow-600 mr-1">Sửa</button>
+                            <button onclick="deleteReceipt('${r.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-red-600">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function editReceipt(receiptId) {
+            const receipt = globalReceipts.find(r => r.id === receiptId);
+            if (!receipt) return;
+
+            document.getElementById('editingReceiptId').value = receipt.id;
+            document.getElementById('receiptDate').value = receipt.import_date;
+            document.getElementById('receiptNote').value = receipt.note || '';
+
+            document.getElementById('importFormTitle').textContent = '✏️ Chỉnh Sửa Phiếu Nhập Kho';
+            document.getElementById('saveReceiptBtn').textContent = 'Cập Nhật Phiếu Nhập';
+            document.getElementById('saveReceiptBtn').className = 'bg-yellow-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-yellow-700 shadow';
+            document.getElementById('cancelReceiptBtn').classList.remove('hidden');
+
+            const tbody = document.getElementById('importTableBody');
+            tbody.innerHTML = '';
+            receipt.inventory_batches.forEach(b => addImportRow(b));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteReceipt(receiptId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa phiếu nhập kho này?')) return;
+            await supabaseClient.from('import_receipts').delete().eq('id', receiptId);
+            fetchAllData();
+        }
+
+        function resetImportForm() {
+            document.getElementById('editingReceiptId').value = '';
+            document.getElementById('receiptDate').valueAsDate = new Date();
+            document.getElementById('receiptNote').value = '';
+            document.getElementById('importTableBody').innerHTML = '';
+            addImportRow();
+            document.getElementById('importFormTitle').textContent = 'Lập Phiếu Nhập Kho Mới';
+            document.getElementById('saveReceiptBtn').textContent = 'Lưu Phiếu Nhập Kho';
+            document.getElementById('saveReceiptBtn').className = 'bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 shadow';
+            document.getElementById('cancelReceiptBtn').classList.add('hidden');
+        }
+
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventoryTableBody');
+            const keyword = document.getElementById('searchInventoryInput').value.toLowerCase().trim();
+
+            if (globalMedicines.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Chưa có thuốc nào</td></tr>';
+                return;
+            }
+
+            const filteredMeds = globalMedicines.filter(m => 
+                m.name.toLowerCase().includes(keyword) || 
+                m.code.toLowerCase().includes(keyword) || 
+                (m.active_ingredient && m.active_ingredient.toLowerCase().includes(keyword))
+            );
+
+            tbody.innerHTML = filteredMeds.map(m => {
+                const medBatches = globalBatches.filter(b => b.medicine_id === m.id);
+                const totalStock = medBatches.reduce((sum, b) => sum + (b.quantity_remaining || 0), 0);
+
+                let batchesHtml = '<span class="text-gray-400 italic">Chưa nhập lô nào</span>';
+                if (medBatches.length > 0) {
+                    batchesHtml = medBatches.map(b => `
+                        <span class="inline-block bg-green-50 text-green-800 px-2.5 py-0.5 rounded text-xs font-medium mr-1 mb-1 border border-green-200">
+                            Ngày nhập: <b>${b.batch_number}</b> | HSD: <b>${b.expiry_date}</b> | Còn: <b>${b.quantity_remaining}</b> ${m.unit}
+                        </span>
+                    `).join('');
+                }
+
+                return `
+                    <tr class="border-b hover:bg-gray-50 align-middle">
+                        <td class="p-3 font-semibold text-gray-600">${m.code}</td>
+                        <td class="p-3 font-medium text-gray-800">${m.name}</td>
+                        <td class="p-3 text-gray-600">${m.active_ingredient || '-'}</td>
+                        <td class="p-3 text-center">${m.unit}</td>
+                        <td class="p-3 text-right">
+                            <div class="inline-flex items-center gap-1">
+                                <input type="number" id="price_inv_${m.id}" value="${m.selling_price || 0}" class="border p-1 rounded w-24 text-right text-sm">
+                                <button onclick="updateMedicinePriceQuick('${m.id}')" title="Cập nhật giá bán" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">💾</button>
+                            </div>
+                        </td>
+                        <td class="p-3 text-right font-bold text-blue-600 text-base">${totalStock} ${m.unit}</td>
+                        <td class="p-3">${batchesHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function updateMedicinePriceQuick(id) {
+            const newPrice = parseFloat(document.getElementById(`price_inv_${id}`).value);
+            if (isNaN(newPrice) || newPrice < 0) { alert('Giá bán không hợp lệ!'); return; }
+            await supabaseClient.from('medicines').update({ selling_price: newPrice }).eq('id', id);
+            alert('Cập nhật giá bán thành công!');
+            fetchAllData();
+        }
+
+        async function handleSaveCategory() {
+            const name = document.getElementById('groupNameInput').value.trim();
+            if (!name) { alert('Vui lòng nhập tên nhóm thuốc!'); return; }
+            await supabaseClient.from('medicine_categories').insert([{ name }]);
+            document.getElementById('groupNameInput').value = '';
+            fetchAllData();
+        }
+
+        function renderCategoriesTable() {
+            const tbody = document.getElementById('categoriesTableBody');
+            tbody.innerHTML = globalCategories.map(c => `<tr class="border-b hover:bg-gray-50"><td class="p-2.5 font-medium text-gray-700">${c.name}</td></tr>`).join('');
+        }
+
+        function renderCategoryDropdowns() {
+            const select = document.getElementById('medCategorySelect');
+            select.innerHTML = '<option value="">-- Chọn nhóm thuốc --</option>' + globalCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        async function handleSaveMedicine() {
+            const editingId = document.getElementById('editingMedicineId').value;
+            const category_id = document.getElementById('medCategorySelect').value;
+            const code = document.getElementById('medCodeInput').value.trim().toUpperCase();
+            const name = document.getElementById('medNameInput').value.trim();
+            const unit = document.getElementById('medUnitInput').value.trim();
+            const active_ingredient = document.getElementById('medIngredientInput').value.trim();
+
+            if (!category_id || !code || !name || !unit) { alert('Vui lòng điền đầy đủ thông tin!'); return; }
+            const payload = { category_id, code, name, unit, active_ingredient };
+
+            if (editingId) {
+                await supabaseClient.from('medicines').update(payload).eq('id', editingId);
+                alert('Cập nhật thành công!');
+            } else {
+                await supabaseClient.from('medicines').insert([payload]);
+                alert('Thêm thuốc thành công!');
+            }
+            resetMedicineForm();
+            fetchAllData();
+        }
+
+        function renderMedicinesTable() {
+            const tbody = document.getElementById('medicinesTableBody');
+            tbody.innerHTML = globalMedicines.map(m => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2.5 font-semibold text-gray-600">${m.code}</td>
+                    <td class="p-2.5 font-medium text-gray-800">${m.name}</td>
+                    <td class="p-2.5 text-gray-600">${m.medicine_categories ? m.medicine_categories.name : '-'}</td>
+                    <td class="p-2.5 text-gray-600">${m.active_ingredient || '-'}</td>
+                    <td class="p-2.5 text-center">${m.unit}</td>
+                    <td class="p-2.5 text-center">
+                        <button onclick="editMedicine('${m.id}')" class="bg-yellow-500 text-white px-2.5 py-1 rounded text-xs font-semibold hover:bg-yellow-600">Sửa</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editMedicine(id) {
+            switchCatalogSubTab('medicine');
+            const med = globalMedicines.find(m => m.id === id);
+            if (!med) return;
+            document.getElementById('editingMedicineId').value = med.id;
+            document.getElementById('medCategorySelect').value = med.category_id || '';
+            document.getElementById('medCodeInput').value = med.code || '';
+            document.getElementById('medNameInput').value = med.name || '';
+            document.getElementById('medUnitInput').value = med.unit || '';
+            document.getElementById('medIngredientInput').value = med.active_ingredient || '';
+            document.getElementById('medFormTitle').textContent = '✏️ Chỉnh Sửa Thông Tin Thuốc';
+            document.getElementById('saveMedicineBtn').textContent = 'Cập Nhật';
+            document.getElementById('saveMedicineBtn').className = 'bg-yellow-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-yellow-700';
+            document.getElementById('cancelEditMedBtn').classList.remove('hidden');
+        }
+
+        function resetMedicineForm() {
+            document.getElementById('editingMedicineId').value = '';
+            document.getElementById('medCategorySelect').value = '';
+            document.getElementById('medCodeInput').value = '';
+            document.getElementById('medNameInput').value = '';
+            document.getElementById('medUnitInput').value = '';
+            document.getElementById('medIngredientInput').value = '';
+            document.getElementById('medFormTitle').textContent = 'Khai Báo Tên Thuốc Mới';
+            document.getElementById('saveMedicineBtn').textContent = 'Lưu Tên Thuốc';
+            document.getElementById('saveMedicineBtn').className = 'bg-blue-600 text-white px-6 py-2 rounded text-sm font-semibold hover:bg-blue-700';
+            document.getElementById('cancelEditMedBtn').classList.add('hidden');
         }
     </script>
 </body>
