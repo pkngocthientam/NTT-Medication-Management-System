@@ -667,24 +667,28 @@
                 .select('*')
                 .order('created_at', { ascending: false });
             
-                        // Tải chi tiết đơn xuất bán
-            const { data: salesItemsData, error: itemsErr } = await supabaseClient
+            // Tải chi tiết đơn xuất bán
+            const { data: salesItemsData } = await supabaseClient
                 .from('sales_order_items')
                 .select('*');
-            if (itemsErr) {
-                console.error(itemsErr);
-                alert('Không đọc được chi tiết phiếu bán: ' + itemsErr.message);
-            }
 
-            globalSalesOrders = (salesData || []).map(order => {
-                const items = (salesItemsData || [])
-                    .filter(item => item.order_id === order.id)
-                    .map(item => ({
-                        ...item,
-                        medicines: globalMedicines.find(m => m.id === item.medicine_id) || null
-                    }));
-                return { ...order, sales_order_items: items };
-            });
+            if (salesData && salesItemsData) {
+                globalSalesOrders = salesData.map(order => {
+                    const items = salesItemsData.filter(item => item.order_id === order.id).map(item => {
+                        const med = globalMedicines.find(m => m.id === item.medicine_id);
+                        return {
+                            ...item,
+                            medicines: med || null
+                        };
+                    });
+                    return {
+                        ...order,
+                        sales_order_items: items
+                    };
+                });
+            } else {
+                globalSalesOrders = salesData || [];
+            }
 
             renderCategoriesTable();
             renderCategoryDropdowns();
@@ -903,143 +907,27 @@
             document.getElementById('grandTotalText').textContent = grandTotal.toLocaleString('vi-VN') + ' đ';
         }
 
-               // Hoàn kho đúng lô đã trừ (đơn cũ chưa có thông tin lô thì hoàn vào lô mới nhất)
-        async function restoreOrderStock(order) {
-            for (const item of (order.sales_order_items || [])) {
-                let allocs = Array.isArray(item.batch_allocations) ? item.batch_allocations : [];
-                if (allocs.length === 0) {
-                    const latest = globalBatches
-                        .filter(b => b.medicine_id === item.medicine_id)
-                        .sort((a, b) => new Date(b.imported_at) - new Date(a.imported_at))[0];
-                    if (latest) allocs = [{ batch_id: latest.id, qty: item.quantity }];
-                }
-                for (const a of allocs) {
-                    const { data: b, error: e1 } = await supabaseClient
-                        .from('inventory_batches').select('quantity_remaining').eq('id', a.batch_id).single();
-                    if (e1) throw e1;
-                    const { error: e2 } = await supabaseClient
-                        .from('inventory_batches')
-                        .update({ quantity_remaining: (b.quantity_remaining || 0) + a.qty })
-                        .eq('id', a.batch_id);
-                    if (e2) throw e2;
-                }
-            }
-        }
-
-        // Trừ kho theo lô cũ trước, đọc tồn mới nhất từ DB, trả về danh sách lô đã trừ
-        async function deductStock(medicine_id, quantity) {
-            const { data: batches, error } = await supabaseClient
-                .from('inventory_batches').select('*')
-                .eq('medicine_id', medicine_id).gt('quantity_remaining', 0)
-                .order('imported_at', { ascending: true });
-            if (error) throw error;
-
-            let remaining = quantity;
-            const allocs = [];
-            for (const b of batches) {
-                if (remaining <= 0) break;
-                const take = Math.min(b.quantity_remaining, remaining);
-                const { error: e } = await supabaseClient
-                    .from('inventory_batches')
-                    .update({ quantity_remaining: b.quantity_remaining - take })
-                    .eq('id', b.id);
-                if (e) throw e;
-                allocs.push({ batch_id: b.id, qty: take });
-                remaining -= take;
-            }
-            if (remaining > 0) throw new Error('Không đủ tồn kho cho một loại thuốc trong phiếu!');
-            return allocs;
-        }
-
         async function handleCompleteSale() {
             const editingId = document.getElementById('editingSalesOrderId').value;
             const patient_name = document.getElementById('patientNameInput').value.trim() || 'BÁN LẺ - 1990 - Nam';
             const rows = document.querySelectorAll('#salesTableBody tr');
+
             if (rows.length === 0) { alert('Chưa có thuốc trong đơn hàng!'); return; }
 
-            const itemsToSell = [];
-            for (const row of rows) {
+            let itemsToSell = [];
+            for (let row of rows) {
                 const medicine_id = row.querySelector('.sale-med-id').value;
                 const quantity = parseInt(row.querySelector('.sale-qty-input').value);
                 const price = parseFloat(row.dataset.price) || 0;
+
                 if (!medicine_id || isNaN(quantity) || quantity <= 0) {
                     alert('Vui lòng chọn thuốc hợp lệ và nhập số lượng!');
                     return;
                 }
-                itemsToSell.push({ medicine_id, quantity, price });
+
+                const medBatches = globalBatches.filter(b => b.medicine_id === medicine_id);
+                itemsToSell.push({ medicine_id, quantity, price, medBatches });
             }
-
-            const total_amount = itemsToSell.reduce((s, i) => s + i.quantity * i.price, 0);
-            const orderCode = document.getElementById('autoOrderCode').textContent.replace('Phiếu: ', '');
-            const btn = document.getElementById('completeSaleBtn');
-            btn.disabled = true;
-
-            try {
-                let orderId = editingId;
-
-                if (editingId) {
-                    const oldOrder = globalSalesOrders.find(o => o.id === editingId);
-                    if (oldOrder) await restoreOrderStock(oldOrder);
-
-                    const { error: delErr } = await supabaseClient
-                        .from('sales_order_items').delete().eq('order_id', editingId);
-                    if (delErr) throw delErr;
-
-                    const { error: updErr } = await supabaseClient
-                        .from('sales_orders').update({ patient_name, total_amount }).eq('id', editingId);
-                    if (updErr) throw updErr;
-                } else {
-                    const { data: orderData, error: orderErr } = await supabaseClient
-                        .from('sales_orders')
-                        .insert([{
-                            order_code: orderCode,
-                            patient_name,
-                            total_amount,
-                            staff_name: currentStaff ? currentStaff.fullname : 'Nhân viên'
-                        }])
-                        .select('id').single();
-                    if (orderErr) throw orderErr;
-                    orderId = orderData.id;
-                }
-
-                for (const item of itemsToSell) {
-                    const allocs = await deductStock(item.medicine_id, item.quantity);
-                    const { error: itemErr } = await supabaseClient.from('sales_order_items').insert([{
-                        order_id: orderId,
-                        medicine_id: item.medicine_id,
-                        quantity: item.quantity,
-                        price: item.price,
-                        batch_allocations: allocs
-                    }]);
-                    if (itemErr) throw itemErr;
-                }
-
-                alert(editingId ? 'Cập nhật phiếu bán thành công & đã điều chỉnh tồn kho!' : 'Bán thuốc thành công & đã trừ tồn kho!');
-                resetSalesForm();
-            } catch (err) {
-                console.error(err);
-                alert('Lỗi: ' + (err.message || err));
-            } finally {
-                await fetchAllData();
-                checkStockWarnings();
-            }
-        }
-
-        async function deleteSalesOrder(orderId) {
-            if (!confirm('Bạn có chắc chắn muốn xóa phiếu bán này? Tồn kho sẽ được hoàn trả lại.')) return;
-            const order = globalSalesOrders.find(o => o.id === orderId);
-            try {
-                if (order) await restoreOrderStock(order);
-                const { error: e1 } = await supabaseClient.from('sales_order_items').delete().eq('order_id', orderId);
-                if (e1) throw e1;
-                const { error: e2 } = await supabaseClient.from('sales_orders').delete().eq('id', orderId);
-                if (e2) throw e2;
-                alert('Đã xóa phiếu bán và hoàn lại kho thành công!');
-            } catch (err) {
-                alert('Lỗi: ' + (err.message || err));
-            }
-            fetchAllData();
-        }
 
             const total_amount = itemsToSell.reduce((sum, item) => sum + (item.quantity * item.price), 0);
             const orderCode = document.getElementById('autoOrderCode').textContent.replace('Phiếu: ', '');
@@ -1167,7 +1055,29 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-       
+        async function deleteSalesOrder(orderId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa phiếu bán này? Tồn kho sẽ được hoàn trả lại.')) return;
+            
+            const order = globalSalesOrders.find(o => o.id === orderId);
+            if (order && order.sales_order_items) {
+                for (let oldItem of order.sales_order_items) {
+                    let qtyBack = oldItem.quantity;
+                    const medBatches = globalBatches.filter(b => b.medicine_id === oldItem.medicine_id).sort((a,b) => new Date(b.imported_at) - new Date(a.imported_at));
+                    for (let batch of medBatches) {
+                        if (qtyBack <= 0) break;
+                        const restored = batch.quantity_remaining + qtyBack;
+                        await supabaseClient.from('inventory_batches').update({ quantity_remaining: restored }).eq('id', batch.id);
+                        qtyBack = 0;
+                    }
+                }
+                await supabaseClient.from('sales_order_items').delete().eq('order_id', orderId);
+            }
+
+            await supabaseClient.from('sales_orders').delete().eq('id', orderId);
+            alert('Đã xóa phiếu bán và hoàn lại kho thành công!');
+            fetchAllData();
+        }
+
         function renderSalesHistory() {
             const container = document.getElementById('salesHistoryList');
             const selectedDate = document.getElementById('filterSalesDate').value;
