@@ -6,6 +6,53 @@
     <title>Phần Mềm Quản Lý Kho & Bán Thuốc - Phòng Khám Tai Mũi Họng Ngọc Thiên Tâm</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <style>
+        @page { size: A4; margin: 10mm; }
+
+        /* Bảng tồn kho dạng ngắn gọn dùng khi in */
+        .inv-print-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: sans-serif; }
+        .inv-print-table th, .inv-print-table td { border: 1px solid #000; padding: 3px 6px; }
+        .inv-print-table th { background: #f3f4f6; text-align: center; }
+        .inv-print-table td.c { text-align: center; }
+        .inv-print-table td.r { text-align: right; font-weight: 700; }
+        .inv-print-table tr.grp td { background: #e5e7eb; font-weight: 700; }
+        .inv-print-table tr { page-break-inside: avoid; }
+        .inv-print-table thead { display: table-header-group; }
+
+        @media print {
+            body { background: #fff !important; }
+            .no-print { display: none !important; }
+            #printableInvoice, #printableInventory {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* In HÓA ĐƠN: chỉ giữ lại khung hóa đơn */
+            body.print-invoice #loginScreen,
+            body.print-invoice #mainApp { display: none !important; }
+            body.print-invoice #invoiceModal {
+                position: static !important;
+                display: block !important;
+                background: transparent !important;
+                padding: 0 !important;
+            }
+            body.print-invoice #invoiceModal > div {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                max-width: 720px !important;
+                max-height: none !important;
+                overflow: visible !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+            }
+
+            /* In TỒN KHO: chỉ giữ lại bảng tồn kho ngắn gọn */
+            body.print-inventory #loginScreen,
+            body.print-inventory #mainApp,
+            body.print-inventory #invoiceModal { display: none !important; }
+            body.print-inventory #printableInventory { display: block !important; }
+        }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -227,7 +274,10 @@
                     </div>
 
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-sm font-semibold text-gray-700">Danh sách thuốc trong phiếu:</h3>
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-700">Danh sách thuốc trong phiếu:</h3>
+                            <p class="text-xs text-gray-500">Gõ tên thuốc ➔ <b>Mũi tên lên/xuống</b> chọn ➔ <b>Enter</b> sang Hạn dùng ➔ <b>Enter</b> Số lượng ➔ <b>Enter</b> Giá nhập ➔ <b>Enter</b> thêm dòng mới.</p>
+                        </div>
                         <button onclick="addImportRow()" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-blue-600">+ Thêm dòng thuốc</button>
                     </div>
 
@@ -235,7 +285,7 @@
                         <table class="w-full border-collapse border border-gray-200 text-sm">
                             <thead>
                                 <tr class="bg-gray-100">
-                                    <th class="border p-2 text-left w-3/5">Tên Thuốc (Chọn từ danh mục)</th>
+                                    <th class="border p-2 text-left w-3/5">Tên Thuốc (Gõ tên để tìm nhanh)</th>
                                     <th class="border p-2 text-center w-36">Hạn Dùng (MMYY)</th>
                                     <th class="border p-2 text-center w-24">Số Lượng</th>
                                     <th class="border p-2 text-right w-1/5">Giá Nhập (đ)</th>
@@ -397,6 +447,9 @@
         </div>
     </div>
 
+    <!-- BẢNG TỒN KHO DÙNG ĐỂ IN (ẩn trên màn hình) -->
+    <div id="printableInventory" class="hidden"></div>
+
     <!-- MODAL XEM TRƯỚC HÓA ĐƠN -->
     <div id="invoiceModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-8 space-y-6 max-h-[90vh] overflow-y-auto">
@@ -450,7 +503,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 pt-4 border-t font-sans">
+            <div class="flex justify-end gap-3 pt-4 border-t font-sans no-print">
                 <button onclick="document.getElementById('invoiceModal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-5 py-2 rounded-lg font-bold text-sm hover:bg-gray-400">Đóng</button>
                 <button onclick="printDirectInvoice()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 shadow">🖨️ In Hóa Đơn Trực Tiếp</button>
             </div>
@@ -1229,27 +1282,21 @@
             return str.charAt(0).toUpperCase() + str.slice(1) + ' đồng';
         }
 
-        // SỬA LỖI IN CHỈ LẤY NỘI DUNG HÓA ĐƠN
+        // IN TRỰC TIẾP TRONG TRANG: chỉ in đúng phần được chọn (hóa đơn / tồn kho),
+        // toàn bộ phần còn lại của trang được ẩn bằng CSS @media print (xem thẻ <style> ở đầu file)
+        function printWithMode(modeClass) {
+            document.body.classList.add(modeClass);
+            const cleanup = () => {
+                document.body.classList.remove(modeClass);
+                window.removeEventListener('afterprint', cleanup);
+            };
+            window.addEventListener('afterprint', cleanup);
+            setTimeout(() => window.print(), 150);
+        }
+
+        // IN HÓA ĐƠN: chỉ in khung hóa đơn đang xem trên màn hình
         function printDirectInvoice() {
-            const invoiceContent = document.getElementById('printableInvoice').outerHTML;
-            const printWindow = window.open('', '_blank', 'width=800,height=900');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>In Hóa Đơn</title>
-                    <script src="https://cdn.tailwindcss.com"><\/script>
-                    <style>
-                        body { background: white; font-family: sans-serif; padding: 20px; }
-                        @page { size: auto; margin: 10mm; }
-                    </style>
-                </head>
-                <body onload="window.print(); window.close();">
-                    <div class="max-w-xl mx-auto">${invoiceContent}</div>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
+            printWithMode('print-invoice');
         }
 
         // --- BÁO CÁO NGÀY ---
@@ -1385,29 +1432,37 @@
         function addImportRow(data = null) {
             const tbody = document.getElementById('importTableBody');
             const rowId = 'row_' + Date.now() + Math.random().toString(36).substring(2, 5);
-            
-            let optionsHtml = '<option value="">-- Chọn tên thuốc --</option>';
-            globalMedicines.forEach(m => {
-                const groupName = m.medicine_categories ? `[${m.medicine_categories.name}] ` : '';
-                const ingredientInfo = m.active_ingredient ? ` (${m.active_ingredient})` : '';
-                const selected = data && data.medicine_id === m.id ? 'selected' : '';
-                optionsHtml += `<option value="${m.id}" ${selected}>${groupName}${m.name}${ingredientInfo} - ĐVT: ${m.unit}</option>`;
-            });
+
+            let medNameVal = '';
+            let medIdVal = '';
+            if (data && data.medicine_id) {
+                const foundMed = globalMedicines.find(m => m.id === data.medicine_id);
+                if (foundMed) {
+                    medNameVal = foundMed.name;
+                    medIdVal = foundMed.id;
+                }
+            }
+            const safeName = medNameVal.replace(/"/g, '&quot;');
+            const qtyVal = data ? data.quantity_imported : 1;
+            const priceVal = data && data.import_price != null ? data.import_price : '';
+            const expiryVal = data && data.expiry_date ? data.expiry_date : '';
 
             const tr = document.createElement('tr');
             tr.id = rowId;
             tr.innerHTML = `
-                <td class="border p-2">
-                    <select class="border p-1.5 rounded w-full med-select text-sm" onchange="onSelectMedicineForImport(this, '${rowId}')">${optionsHtml}</select>
+                <td class="border p-2 relative">
+                    <input type="text" placeholder="Gõ tên thuốc (VD: Cur)..." value="${safeName}" class="border p-1.5 rounded w-full imp-med-input text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" oninput="filterImportMedicines(this, '${rowId}')" onkeydown="handleImportMedKeydown(event, '${rowId}')" autocomplete="off">
+                    <input type="hidden" class="imp-med-id" value="${medIdVal}">
+                    <div class="imp-suggestions absolute left-0 right-0 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-20 hidden mt-1"></div>
                 </td>
                 <td class="border p-2 text-center">
-                    <input type="text" placeholder="VD: 0926" maxlength="4" value="${data ? data.expiry_date : ''}" class="border p-1.5 rounded w-full expiry-input text-center text-sm font-mono">
+                    <input type="text" placeholder="VD: 0926" maxlength="4" value="${expiryVal}" onkeydown="handleImportFieldKeydown(event, '${rowId}', 'qty-input')" class="border p-1.5 rounded w-full expiry-input text-center text-sm font-mono">
                 </td>
                 <td class="border p-2">
-                    <input type="number" placeholder="SL" value="${data ? data.quantity_imported : 1}" class="border p-1.5 rounded w-full qty-input text-center text-sm">
+                    <input type="number" placeholder="SL" value="${qtyVal}" onkeydown="handleImportFieldKeydown(event, '${rowId}', 'price-input')" class="border p-1.5 rounded w-full qty-input text-center text-sm">
                 </td>
                 <td class="border p-2">
-                    <input type="number" placeholder="Giá nhập" value="${data ? data.import_price : ''}" class="border p-1.5 rounded w-full price-input text-right text-sm">
+                    <input type="number" placeholder="Giá nhập" value="${priceVal}" oninput="this.dataset.auto='false'" onkeydown="handleImportFieldKeydown(event, '${rowId}', null)" class="border p-1.5 rounded w-full price-input text-right text-sm">
                 </td>
                 <td class="border p-2 text-center">
                     <button onclick="document.getElementById('${rowId}').remove()" class="text-red-500 font-bold hover:text-red-700">✕</button>
@@ -1416,13 +1471,128 @@
             tbody.appendChild(tr);
         }
 
-        async function onSelectMedicineForImport(selectEl, rowId) {
-            const medicineId = selectEl.value;
-            if (!medicineId) return;
-
+        // Gõ tên (hoặc mã / hoạt chất) => xổ gợi ý xuống
+        function filterImportMedicines(inputEl, rowId) {
             const row = document.getElementById(rowId);
+            const dropdown = row.querySelector('.imp-suggestions');
+            // Đang gõ lại => bỏ lựa chọn cũ, bắt buộc chọn lại từ gợi ý
+            row.querySelector('.imp-med-id').value = '';
+
+            const keyword = inputEl.value.toLowerCase().trim();
+            if (!keyword) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            const matched = globalMedicines.filter(m =>
+                m.name.toLowerCase().includes(keyword) ||
+                (m.code && m.code.toLowerCase().includes(keyword)) ||
+                (m.active_ingredient && m.active_ingredient.toLowerCase().includes(keyword))
+            );
+
+            if (matched.length === 0) {
+                dropdown.innerHTML = '<div class="p-2 text-gray-400 text-xs">Không tìm thấy thuốc trong danh mục (hãy khai báo ở tab Khai Báo Danh Mục)</div>';
+                dropdown.classList.remove('hidden');
+                return;
+            }
+
+            dropdown.innerHTML = matched.map((m, index) => {
+                const groupName = m.medicine_categories ? m.medicine_categories.name : 'Chưa phân nhóm';
+                const extra = m.active_ingredient ? ' | ' + m.active_ingredient : '';
+                const activeClass = index === 0 ? 'bg-blue-50' : '';
+                return `<div onclick="selectImportMedicine('${m.id}', '${rowId}')"
+                    class="imp-sugg-item p-2 hover:bg-blue-50 cursor-pointer text-xs border-b flex justify-between items-center ${activeClass}"
+                    data-id="${m.id}">
+                    <span class="font-medium text-gray-800">${m.name} (${m.unit})</span>
+                    <span class="text-purple-600 font-semibold">${groupName}${extra}</span>
+                </div>`;
+            }).join('');
+            dropdown.classList.remove('hidden');
+        }
+
+        // Phím mũi tên lên/xuống để chọn, Enter để chốt
+        function handleImportMedKeydown(event, rowId) {
+            const row = document.getElementById(rowId);
+            const dropdown = row.querySelector('.imp-suggestions');
+            const items = dropdown.querySelectorAll('.imp-sugg-item');
+
+            if (dropdown.classList.contains('hidden') || items.length === 0) {
+                // Đã chọn thuốc rồi mà bấm Enter => sang ô Hạn dùng
+                if (event.key === 'Enter' && row.querySelector('.imp-med-id').value) {
+                    event.preventDefault();
+                    row.querySelector('.expiry-input').focus();
+                }
+                return;
+            }
+
+            let currentIndex = Array.from(items).findIndex(i => i.classList.contains('bg-blue-50'));
+            if (currentIndex < 0) currentIndex = 0;
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (currentIndex < items.length - 1) {
+                    items[currentIndex].classList.remove('bg-blue-50');
+                    items[currentIndex + 1].classList.add('bg-blue-50');
+                    items[currentIndex + 1].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (currentIndex > 0) {
+                    items[currentIndex].classList.remove('bg-blue-50');
+                    items[currentIndex - 1].classList.add('bg-blue-50');
+                    items[currentIndex - 1].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                const activeItem = items[currentIndex];
+                if (activeItem) selectImportMedicine(activeItem.dataset.id, rowId);
+            } else if (event.key === 'Escape') {
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function selectImportMedicine(id, rowId) {
+            const med = globalMedicines.find(m => m.id === id);
+            const row = document.getElementById(rowId);
+            if (!med || !row) return;
+
+            row.querySelector('.imp-med-input').value = med.name;
+            row.querySelector('.imp-med-id').value = med.id;
+            row.querySelector('.imp-suggestions').classList.add('hidden');
+
+            fillLastImportPrice(med.id, rowId);
+
+            const expiry = row.querySelector('.expiry-input');
+            expiry.focus();
+            expiry.select();
+        }
+
+        // Enter ở Hạn dùng ➔ Số lượng ➔ Giá nhập ➔ (dòng mới)
+        function handleImportFieldKeydown(event, rowId, nextClass) {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            const row = document.getElementById(rowId);
+
+            if (nextClass) {
+                const el = row.querySelector('.' + nextClass);
+                el.focus();
+                el.select();
+                return;
+            }
+
+            const rows = Array.from(document.querySelectorAll('#importTableBody tr'));
+            const idx = rows.findIndex(r => r.id === rowId);
+            if (idx === rows.length - 1) addImportRow();
+            const nextRow = document.querySelectorAll('#importTableBody tr')[idx + 1];
+            if (nextRow) nextRow.querySelector('.imp-med-input').focus();
+        }
+
+        // Tự điền giá nhập gần nhất của thuốc vừa chọn (không đè giá người dùng đã gõ)
+        async function fillLastImportPrice(medicineId, rowId) {
+            const row = document.getElementById(rowId);
+            if (!row) return;
             const priceInput = row.querySelector('.price-input');
-            if (priceInput.value) return;
+            if (priceInput.value && priceInput.dataset.auto !== 'true') return;
 
             const { data } = await supabaseClient
                 .from('inventory_batches')
@@ -1431,10 +1601,23 @@
                 .order('imported_at', { ascending: false })
                 .limit(1);
 
-            if (data && data.length > 0) {
+            if (!data || data.length === 0) return;
+            if (row.querySelector('.imp-med-id').value !== medicineId) return;
+            if (!priceInput.value || priceInput.dataset.auto === 'true') {
                 priceInput.value = data[0].import_price;
+                priceInput.dataset.auto = 'true';
             }
         }
+
+        // Bấm ra ngoài => đóng khung gợi ý (cả phần nhập kho và phần bán thuốc)
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('.imp-suggestions, .sale-suggestions').forEach(dd => {
+                if (dd.contains(e.target)) return;
+                const input = dd.parentElement.querySelector('input[type="text"]');
+                if (input === e.target) return;
+                dd.classList.add('hidden');
+            });
+        });
 
         async function handleSaveReceipt() {
             const editingId = document.getElementById('editingReceiptId').value;
@@ -1443,12 +1626,18 @@
 
             if (!import_date) { alert('Vui lòng chọn ngày nhập kho!'); return; }
 
-            const rows = document.querySelectorAll('#importTableBody tr');
+            const rows = Array.from(document.querySelectorAll('#importTableBody tr')).filter(r =>
+                r.querySelector('.imp-med-input').value.trim() || r.querySelector('.expiry-input').value.trim());
             if (rows.length === 0) { alert('Chưa có dòng thuốc nào trong phiếu!'); return; }
 
             let batchList = [];
             for (let row of rows) {
-                const medicine_id = row.querySelector('.med-select').value;
+                const medicine_id = row.querySelector('.imp-med-id').value;
+                if (!medicine_id && row.querySelector('.imp-med-input').value.trim()) {
+                    alert('Vui lòng chọn thuốc từ danh sách gợi ý (gõ tên rồi chọn)!');
+                    row.querySelector('.imp-med-input').focus();
+                    return;
+                }
                 const expiry_date = row.querySelector('.expiry-input').value.trim();
                 const quantity_imported = parseInt(row.querySelector('.qty-input').value);
                 const import_price = parseFloat(row.querySelector('.price-input').value) || 0;
@@ -1647,8 +1836,65 @@
             fetchAllData();
         }
 
+        // IN TỒN KHO (A4): bảng ngắn gọn - chỉ Mã, Tên thuốc, ĐVT, Tồn kho, gom theo nhóm thuốc
         function exportInventoryPDF() {
-            window.print();
+            if (globalMedicines.length === 0) { alert('Chưa có thuốc nào để in!'); return; }
+
+            const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const groupOf = m => m.medicine_categories ? m.medicine_categories.name : 'Chưa phân nhóm';
+
+            const meds = [...globalMedicines].sort((a, b) => {
+                const c = groupOf(a).localeCompare(groupOf(b), 'vi');
+                return c !== 0 ? c : a.name.localeCompare(b.name, 'vi');
+            });
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('vi-VN') + ' ' + now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+            let rowsHtml = '';
+            let currentGroup = null;
+            let stt = 0;
+            meds.forEach(m => {
+                const groupName = groupOf(m);
+                if (groupName !== currentGroup) {
+                    currentGroup = groupName;
+                    rowsHtml += `<tr class="grp"><td colspan="5">${esc(groupName)}</td></tr>`;
+                }
+                stt++;
+                const total = globalBatches
+                    .filter(b => b.medicine_id === m.id)
+                    .reduce((sum, b) => sum + (b.quantity_remaining || 0), 0);
+                rowsHtml += `
+                    <tr>
+                        <td class="c">${stt}</td>
+                        <td>${esc(m.code)}</td>
+                        <td>${esc(m.name)}</td>
+                        <td class="c">${esc(m.unit)}</td>
+                        <td class="r">${total}</td>
+                    </tr>`;
+            });
+
+            document.getElementById('printableInventory').innerHTML = `
+                <div style="text-align:center; margin-bottom:10px;">
+                    <div style="font-size:12px; font-weight:600; text-transform:uppercase;">Phòng Khám Tai Mũi Họng Ngọc Thiên Tâm</div>
+                    <div style="font-size:18px; font-weight:800; text-transform:uppercase; margin-top:4px;">Bảng Tồn Kho Thuốc</div>
+                    <div style="font-size:12px; margin-top:2px;">Thời điểm in: ${dateStr} &nbsp;|&nbsp; Tổng số loại thuốc: ${stt}</div>
+                </div>
+                <table class="inv-print-table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">STT</th>
+                            <th style="width:90px;">Mã</th>
+                            <th>Tên thuốc &amp; Hàm lượng</th>
+                            <th style="width:70px;">ĐVT</th>
+                            <th style="width:80px;">Tồn kho</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            `;
+
+            printWithMode('print-inventory');
         }
 
         async function handleSaveCategory() {
