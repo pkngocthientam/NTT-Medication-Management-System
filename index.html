@@ -104,6 +104,7 @@
         <div id="sectionSales" class="space-y-6">
             <div class="flex bg-white rounded-lg shadow-sm border p-1 gap-2">
                 <button onclick="switchSalesSubTab('pos')" id="salesSubTabPos" class="flex-1 py-2.5 rounded-md font-semibold text-sm bg-blue-50 text-blue-700 shadow-sm transition">⚡ Lập Phiếu & Lịch Sử Bán</button>
+                <button onclick="switchSalesSubTab('other')" id="salesSubTabOther" class="flex-1 py-2.5 rounded-md font-semibold text-sm text-gray-600 hover:bg-gray-50 transition">📤 Xuất Khác (Không tính doanh thu)</button>
                 <button onclick="switchSalesSubTab('report')" id="salesSubTabReport" class="flex-1 py-2.5 rounded-md font-semibold text-sm text-gray-600 hover:bg-gray-50 transition">📈 Báo Cáo Tổng Hợp Bán Thuốc Theo Ngày</button>
             </div>
 
@@ -123,7 +124,10 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Tên bệnh nhân (Không bắt buộc)</label>
+                        <div id="salesModeBanner" class="hidden mb-2 bg-amber-50 border border-amber-300 text-amber-800 p-2.5 rounded text-xs font-semibold">
+                            📤 Phiếu xuất khác: vẫn TRỪ tồn kho nhưng KHÔNG tính vào doanh thu và báo cáo bán thuốc theo ngày.
+                        </div>
+                        <label id="patientLabel" class="block text-xs font-medium text-gray-700 mb-1">Tên bệnh nhân (Không bắt buộc)</label>
                         <input type="text" id="patientNameInput" placeholder="Nhập tên bệnh nhân hoặc để trống (BÁN LẺ - 1990 - Nam)..." class="border p-2 rounded w-full text-sm">
                     </div>
 
@@ -151,7 +155,7 @@
                         ⚠️ Có thuốc vượt quá số lượng tồn kho! Vui lòng kiểm tra lại.
                     </div>
 
-                    <div class="flex justify-between items-center bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div id="grandTotalBox" class="flex justify-between items-center bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <span class="text-sm font-bold text-gray-700">Tổng tiền đơn hàng:</span>
                         <span id="grandTotalText" class="text-2xl font-black text-blue-700">0 đ</span>
                     </div>
@@ -164,7 +168,7 @@
                 <!-- Cột phải: Lịch sử phiếu bán -->
                 <div class="bg-white p-6 rounded-lg shadow border space-y-4">
                     <div class="flex justify-between items-center border-b pb-2">
-                        <h2 class="text-md font-bold text-gray-700">📜 Lịch Sử Phiếu Bán</h2>
+                        <h2 id="salesHistoryTitle" class="text-md font-bold text-gray-700">📜 Lịch Sử Phiếu Bán</h2>
                         <input type="date" id="filterSalesDate" onchange="renderSalesHistory()" class="border p-1 rounded text-xs font-semibold">
                     </div>
                     <div class="overflow-y-auto max-h-[550px] space-y-3" id="salesHistoryList">
@@ -178,7 +182,7 @@
                 <div class="flex justify-between items-center border-b pb-4">
                     <div>
                         <h2 class="text-lg font-bold text-blue-600">📈 Báo Cáo Tổng Hợp Bán Thuốc Theo Ngày</h2>
-                        <p class="text-xs text-gray-500">Xem doanh thu, tổng hợp chi tiết tất cả thuốc đã xuất bán theo ngày chọn.</p>
+                        <p class="text-xs text-gray-500">Xem doanh thu, tổng hợp chi tiết tất cả thuốc đã xuất bán theo ngày chọn (không bao gồm phiếu Xuất Khác).</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <label class="text-sm font-medium text-gray-700">Chọn ngày báo cáo:</label>
@@ -521,6 +525,8 @@
         let globalBatches = [];
         let globalSalesOrders = [];
         let currentStaff = null;
+        let salesMode = 'sale'; // 'sale' = bán thuốc | 'other' = xuất khác (không tính doanh thu)
+        const isSaleOrder = o => o.order_type !== 'other';
 
         window.addEventListener('DOMContentLoaded', () => {
             try {
@@ -583,10 +589,14 @@
         }
 
         function generateNewOrderCode() {
-            const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            const todayOrders = globalSalesOrders.filter(o => o.created_at && o.created_at.startsWith(new Date().toISOString().slice(0, 10)));
+            const todayIso = new Date().toISOString().slice(0, 10);
+            const todayStr = todayIso.replace(/-/g, '');
+            const isOther = salesMode === 'other';
+            const todayOrders = globalSalesOrders.filter(o =>
+                o.created_at && o.created_at.startsWith(todayIso) && (isOther ? !isSaleOrder(o) : isSaleOrder(o))
+            );
             const nextSeq = todayOrders.length + 1;
-            const code = `PB-${todayStr}-${String(nextSeq).padStart(2, '0')}`;
+            const code = `${isOther ? 'XK' : 'PB'}-${todayStr}-${String(nextSeq).padStart(2, '0')}`;
             document.getElementById('autoOrderCode').textContent = 'Phiếu: ' + code;
         }
 
@@ -618,22 +628,60 @@
             const repSec = document.getElementById('salesSubSectionReport');
 
             const btnPos = document.getElementById('salesSubTabPos');
+            const btnOther = document.getElementById('salesSubTabOther');
             const btnRep = document.getElementById('salesSubTabReport');
+
+            const activeCls = 'flex-1 py-2.5 rounded-md font-semibold text-sm bg-blue-50 text-blue-700 shadow-sm transition';
+            const idleCls = 'flex-1 py-2.5 rounded-md font-semibold text-sm text-gray-600 hover:bg-gray-50 transition';
 
             posSec.classList.add('hidden');
             repSec.classList.add('hidden');
+            btnPos.className = idleCls;
+            btnOther.className = idleCls;
+            btnRep.className = idleCls;
 
-            btnPos.className = 'flex-1 py-2.5 rounded-md font-semibold text-sm text-gray-600 hover:bg-gray-50 transition';
-            btnRep.className = 'flex-1 py-2.5 rounded-md font-semibold text-sm text-gray-600 hover:bg-gray-50 transition';
-
-            if (sub === 'pos') {
+            if (sub === 'pos' || sub === 'other') {
+                const newMode = sub === 'other' ? 'other' : 'sale';
+                if (newMode !== salesMode) {
+                    salesMode = newMode;
+                    resetSalesForm();
+                }
                 posSec.classList.remove('hidden');
-                btnPos.className = 'flex-1 py-2.5 rounded-md font-semibold text-sm bg-blue-50 text-blue-700 shadow-sm transition';
+                (sub === 'other' ? btnOther : btnPos).className = activeCls;
+                applySalesModeUI();
+                renderSalesHistory();
             } else if (sub === 'report') {
                 repSec.classList.remove('hidden');
-                btnRep.className = 'flex-1 py-2.5 rounded-md font-semibold text-sm bg-blue-50 text-blue-700 shadow-sm transition';
+                btnRep.className = activeCls;
                 renderDailyReport();
             }
+        }
+
+        // Đổi nhãn / tiêu đề / nút theo chế độ: BÁN THUỐC hay XUẤT KHÁC
+        function applySalesModeUI() {
+            const isOther = salesMode === 'other';
+            const editing = !!document.getElementById('editingSalesOrderId').value;
+
+            document.getElementById('salesFormTitle').textContent = editing
+                ? (isOther ? '✏️ Chỉnh Sửa Phiếu Xuất Khác' : '✏️ Chỉnh Sửa Phiếu Bán Thuốc')
+                : (isOther ? '📤 Lập Phiếu Xuất Khác' : '⚡ Lập Phiếu Bán Thuốc Nhanh');
+
+            document.getElementById('completeSaleBtn').textContent = editing
+                ? (isOther ? '💾 Cập Nhật Lại Phiếu Xuất' : '💾 Cập Nhật Lại Phiếu Bán')
+                : (isOther ? '✅ Hoàn Thành Xuất & Trừ Kho' : '✅ Hoàn Thành Bán & Trừ Kho');
+
+            document.getElementById('patientLabel').textContent = isOther
+                ? 'Lý do xuất (Bắt buộc)'
+                : 'Tên bệnh nhân (Không bắt buộc)';
+            document.getElementById('patientNameInput').placeholder = isOther
+                ? 'VD: Xuất cho nhân viên, điều chỉnh kho, hàng hỏng / hết hạn...'
+                : 'Nhập tên bệnh nhân hoặc để trống (BÁN LẺ - 1990 - Nam)...';
+
+            document.getElementById('grandTotalBox').classList.toggle('hidden', isOther);
+            document.getElementById('salesModeBanner').classList.toggle('hidden', !isOther);
+            document.getElementById('salesHistoryTitle').textContent = isOther
+                ? '📜 Lịch Sử Xuất Khác'
+                : '📜 Lịch Sử Phiếu Bán';
         }
 
         function switchSubTab(sub) {
@@ -1011,7 +1059,13 @@
 
         async function handleCompleteSale() {
             const editingId = document.getElementById('editingSalesOrderId').value;
-            const patient_name = document.getElementById('patientNameInput').value.trim() || 'BÁN LẺ - 1990 - Nam';
+            const patientRaw = document.getElementById('patientNameInput').value.trim();
+            if (salesMode === 'other' && !patientRaw) {
+                alert('Vui lòng nhập lý do xuất!');
+                document.getElementById('patientNameInput').focus();
+                return;
+            }
+            const patient_name = patientRaw || 'BÁN LẺ - 1990 - Nam';
             const rows = document.querySelectorAll('#salesTableBody tr');
             if (rows.length === 0) { alert('Chưa có thuốc trong đơn hàng!'); return; }
 
@@ -1024,7 +1078,7 @@
                     alert('Vui lòng chọn thuốc hợp lệ và nhập số lượng!');
                     return;
                 }
-                itemsToSell.push({ medicine_id, quantity, price });
+                itemsToSell.push({ medicine_id, quantity, price: salesMode === 'other' ? 0 : price });
             }
 
             const total_amount = itemsToSell.reduce((s, i) => s + i.quantity * i.price, 0);
@@ -1051,6 +1105,7 @@
                         .from('sales_orders')
                         .insert([{
                             order_code: orderCode,
+                            ...(salesMode === 'other' ? { order_type: 'other' } : {}),
                             patient_name,
                             total_amount,
                             staff_name: currentStaff ? currentStaff.fullname : 'Nhân viên'
@@ -1086,7 +1141,7 @@
                     }
                 }
 
-                alert(editingId ? 'Cập nhật phiếu bán thành công & đã điều chỉnh tồn kho!' : 'Bán thuốc thành công & đã trừ tồn kho!');
+                alert(editingId ? 'Cập nhật phiếu thành công & đã điều chỉnh tồn kho!' : (salesMode === 'other' ? 'Xuất kho thành công & đã trừ tồn kho!' : 'Bán thuốc thành công & đã trừ tồn kho!'));
                 resetSalesForm();
             } catch (err) {
                 console.error(err);
@@ -1101,8 +1156,8 @@
             document.getElementById('editingSalesOrderId').value = '';
             document.getElementById('patientNameInput').value = '';
             document.getElementById('salesTableBody').innerHTML = '';
-            document.getElementById('salesFormTitle').textContent = '⚡ Lập Phiếu Bán Thuốc Nhanh';
-            document.getElementById('completeSaleBtn').textContent = '✅ Hoàn Thành Bán & Trừ Kho';
+            applySalesModeUI();
+            
             document.getElementById('cancelEditSalesBtn').classList.add('hidden');
             generateNewOrderCode();
             addSaleRow();
@@ -1119,6 +1174,7 @@
             document.getElementById('salesFormTitle').textContent = '✏️ Chỉnh Sửa Phiếu Bán Thuốc';
             document.getElementById('completeSaleBtn').textContent = '💾 Cập Nhật Lại Phiếu Bán';
             document.getElementById('cancelEditSalesBtn').classList.remove('hidden');
+            applySalesModeUI();
 
             const tbody = document.getElementById('salesTableBody');
             tbody.innerHTML = '';
@@ -1132,7 +1188,7 @@
         }
 
         async function deleteSalesOrder(orderId) {
-            if (!confirm('Bạn có chắc chắn muốn xóa phiếu bán này? Tồn kho sẽ được hoàn trả lại.')) return;
+            if (!confirm('Bạn có chắc chắn muốn xóa phiếu này? Tồn kho sẽ được hoàn trả lại.')) return;
             const order = globalSalesOrders.find(o => o.id === orderId);
             try {
                 if (order) await restoreOrderStock(order);
@@ -1140,7 +1196,7 @@
                 if (e1) throw e1;
                 const { error: e2 } = await supabaseClient.from('sales_orders').delete().eq('id', orderId);
                 if (e2) throw e2;
-                alert('Đã xóa phiếu bán và hoàn lại kho thành công!');
+                alert('Đã xóa phiếu và hoàn lại kho thành công!');
             } catch (err) {
                 alert('Lỗi: ' + (err.message || err));
             }
@@ -1150,22 +1206,52 @@
         function renderSalesHistory() {
             const container = document.getElementById('salesHistoryList');
             const selectedDate = document.getElementById('filterSalesDate').value;
+            const isOther = salesMode === 'other';
 
             const filteredOrders = globalSalesOrders.filter(o => {
+                // Chế độ bán thuốc chỉ hiện phiếu bán; chế độ xuất khác chỉ hiện phiếu xuất khác
+                if (isOther ? isSaleOrder(o) : !isSaleOrder(o)) return false;
                 if (!selectedDate) return true;
                 const oDate = new Date(o.created_at).toISOString().slice(0, 10);
                 return oDate === selectedDate;
             });
 
             if (filteredOrders.length === 0) {
-                container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Không có phiếu bán nào trong ngày này</p>';
+                container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">${isOther ? 'Không có phiếu xuất khác nào trong ngày này' : 'Không có phiếu bán nào trong ngày này'}</p>`;
                 return;
             }
 
             container.innerHTML = filteredOrders.map(o => {
                 const dateStr = new Date(o.created_at).toLocaleDateString('vi-VN');
                 const timeStr = new Date(o.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                
+
+                if (isOther) {
+                    let otherSummary = '<span class="text-gray-400">Không có dữ liệu thuốc</span>';
+                    if (o.sales_order_items && o.sales_order_items.length > 0) {
+                        otherSummary = o.sales_order_items.map(i => {
+                            const name = i.medicines ? i.medicines.name : 'Thuốc';
+                            const unit = i.medicines ? i.medicines.unit : '';
+                            return `• ${name}: <b>${i.quantity} ${unit}</b>`;
+                        }).join('<br>');
+                    }
+
+                    return `
+                        <div class="border border-amber-300 rounded-lg p-3 bg-amber-50 text-xs space-y-2">
+                            <div class="font-bold text-gray-800">
+                                <span>📤 ${o.order_code || 'XK'} | 📝 Lý do: ${o.patient_name}</span>
+                            </div>
+                            <div class="text-gray-500">📅 ${dateStr} lúc ${timeStr} | NV: ${o.staff_name || 'N/A'}</div>
+                            <div class="text-gray-700 bg-white p-2 rounded border">
+                                ${otherSummary}
+                            </div>
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="editSalesOrder('${o.id}')" class="bg-yellow-500 text-white px-2.5 py-1 rounded font-semibold hover:bg-yellow-600">Sửa</button>
+                                <button onclick="deleteSalesOrder('${o.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded font-semibold hover:bg-red-600">Xóa</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 let itemsSummary = '<span class="text-gray-400">Không có dữ liệu thuốc</span>';
                 if (o.sales_order_items && o.sales_order_items.length > 0) {
                     itemsSummary = o.sales_order_items.map(i => {
@@ -1308,7 +1394,7 @@
             document.getElementById('reportDateDisplay').textContent = `Ngày ${d} tháng ${m} năm ${y}`;
 
             const ordersOnDate = globalSalesOrders.filter(o => {
-                if (!o.created_at) return false;
+                if (!o.created_at || !isSaleOrder(o)) return false;
                 return o.created_at.slice(0, 10) === dateVal;
             });
 
@@ -1381,7 +1467,7 @@
                 return;
             }
 
-            const ordersOnDate = globalSalesOrders.filter(o => o.created_at && o.created_at.slice(0, 10) === reportDate);
+            const ordersOnDate = globalSalesOrders.filter(o => o.created_at && isSaleOrder(o) && o.created_at.slice(0, 10) === reportDate);
             const totalOrders = ordersOnDate.length;
             let totalRevenue = ordersOnDate.reduce((s, o) => s + (o.total_amount || 0), 0);
 
